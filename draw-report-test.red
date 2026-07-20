@@ -86,7 +86,31 @@ pdf-report: function [] [
     rpt
 ]
 
-pages: copy []
+;--- Orientation popup ---
+is-landscape: false
+view/options layout [
+    title "Orientation"
+    below
+    text 200x30 "Choose page orientation:" center
+    across
+    button "Portrait"  [is-landscape: false unview]
+    button "Landscape" [is-landscape: true unview]
+][size: 280x80]
+
+;--- Set paper format ---
+either is-landscape [
+    paper-format/landscape 'a4
+    pw: 842 ph: 595
+][
+    paper-format 'a4
+    pw: 595 ph: 842
+]
+
+win-w: pw + 105
+win-h: ph + 108
+
+;--- Generate report ---
+pages: generate-report pdf-report
 current-page: 1
 
 show-page: does [
@@ -96,27 +120,17 @@ show-page: does [
     ]
 ]
 
-view/options layout [
+;--- Main viewer ---
+view/options compose [
     title "Draw Report Viewer"
     below
-    page-label: text 400x20 "Page 0 of 0" center
-    page-display: base 595x842
+    page-label: text (as-pair pw 20) "Page 0 of 0" center
+    page-display: base (as-pair pw ph)
     across
     button "<<" [current-page: 1 show-page]
     button "<"  [if current-page > 1 [current-page: current-page - 1 show-page]]
     button ">"  [if current-page < length? pages [current-page: current-page + 1 show-page]]
     button ">>" [current-page: length? pages show-page]
-    return
-    button "Portrait" [
-        paper-format 'a4
-        pages: generate-report pdf-report
-        current-page: 1 show-page
-    ]
-    button "Landscape" [
-        paper-format/landscape 'a4
-        pages: generate-report pdf-report
-        current-page: 1 show-page
-    ]
     button "Dump Source" [foreach item pdf-report [probe item]]
     do [show-page]
-][size: 700x950]
+][size: (as-pair win-w win-h)]
