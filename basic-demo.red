@@ -177,7 +177,7 @@ view/options compose/deep [
     ; Page viewport + scroller
     across
     page-display: base (as-pair vp-w vp-h) white
-    sc: scroller 16x(vp-h) [
+    sc: scroller (as-pair 16 vp-h) [
         if not empty? pages [
             page-img: render-page pick pages current-page zoom
             max-scroll: max 0 page-img/size/y - vp-h
