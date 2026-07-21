@@ -79,13 +79,13 @@ zoom-levels: [25 50 75 100 125 150 200]
 ;--- Cache native-resolution images ---
 native-cache: copy []
 get-native: function [pn [integer!]][
-    while [pn > length? native-cache][
-        append/only native-cache render-page pick pages (length? native-cache + 1) 100
+    while [pn > (length? native-cache)][
+        append/only native-cache render-page pick pages ((length? native-cache) + 1) 100
     ]
     pick native-cache pn
 ]
 
-;--- Zoom: scale cached native image (crisp at all levels) ---
+;--- Zoom: scale cached native image ---
 get-zoomed: function [pn [integer!] z [integer!] /local native w h][
     native: get-native pn
     w: to integer! native/size/x * z / 100
@@ -95,7 +95,6 @@ get-zoomed: function [pn [integer!] z [integer!] /local native w h][
 
 zoom-in: does [
     foreach z zoom-levels [if z > zoom [zoom: z break]]
-    scroll-x: 0 scroll-y: 0
     update-display
 ]
 
@@ -103,12 +102,11 @@ zoom-out: does [
     reverse zoom-levels
     foreach z zoom-levels [if z < zoom [zoom: z break]]
     reverse zoom-levels
-    scroll-x: 0 scroll-y: 0
     update-display
 ]
 
 zoom-fit-width: does [
-    z: to integer! vp-w / (to float! page-width) * 100
+    z: to integer! vp-w / (to float! get-page-width) * 100
     zoom: first zoom-levels
     foreach lz zoom-levels [if lz <= z [zoom: lz]]
     scroll-x: 0 scroll-y: 0
@@ -116,8 +114,8 @@ zoom-fit-width: does [
 ]
 
 zoom-fit-page: does [
-    zw: to integer! vp-w / (to float! page-width) * 100
-    zh: to integer! vp-h / (to float! page-height) * 100
+    zw: to integer! vp-w / (to float! get-page-width) * 100
+    zh: to integer! vp-h / (to float! get-page-height) * 100
     z: min zw zh
     zoom: first zoom-levels
     foreach lz zoom-levels [if lz <= z [zoom: lz]]
@@ -139,11 +137,21 @@ update-display: does [
     if scroll-x < 0 [scroll-x: 0]
     if scroll-y < 0 [scroll-y: 0]
 
-    ; Crop visible portion
-    vw: min vp-w full-w
-    vh: min vp-h full-h
-    visible: draw as-pair vw vh compose [
-        image page-img (as-pair (0 - scroll-x) (0 - scroll-y)) (as-pair full-w full-h)
+    ; Draw page centered (if smaller) or scrolled (if larger)
+    either all [full-w <= vp-w full-h <= vp-h][
+        ; Page fits — center it
+        cx: to integer! (vp-w - full-w) / 2
+        cy: to integer! (vp-h - full-h) / 2
+        visible: draw as-pair vp-w vp-h compose [
+            fill-pen white pen off box 0x0 (as-pair vp-w vp-h)
+            image page-img (as-pair cx cy) (as-pair full-w full-h)
+        ]
+    ][
+        ; Page overflows — crop with scroll
+        visible: draw as-pair vp-w vp-h compose [
+            fill-pen white pen off box 0x0 (as-pair vp-w vp-h)
+            image page-img (as-pair (0 - scroll-x) (0 - scroll-y)) (as-pair full-w full-h)
+        ]
     ]
     page-display/image: visible
 
@@ -151,7 +159,7 @@ update-display: does [
     page-label/text: rejoin ["Page " current-page " / " length? pages]
     zoom-label/text: rejoin [zoom "%"]
 
-    ; Update scrollers
+    ; Scrollers: only visible when page overflows viewport
     needs-v?: full-h > vp-h
     needs-h?: full-w > vp-w
     scroller-v/visible?: needs-v?
@@ -162,16 +170,6 @@ update-display: does [
     if needs-h? [
         scroller-h/data: either max-sx > 0 [to float! scroll-x / max-sx][0.0]
     ]
-]
-
-resize-viewport: does [
-    win-sz: page-display/parent/size
-    vp-w: max 200 win-sz/x - 40
-    vp-h: max 200 win-sz/y - toolbar-h - 40
-    page-display/size: as-pair vp-w vp-h
-    scroller-v/size: as-pair 18 vp-h
-    scroller-h/size: as-pair vp-w 18
-    update-display
 ]
 
 ;--- Build viewer UI ---
@@ -200,9 +198,15 @@ view/options/flags compose/deep [
     button "Fit Page" [zoom-fit-page]
     return
 
-    ; Page viewport + vertical scroller
-    across
-    page-display: base (as-pair vp-w vp-h) white
+    ; Page viewport — fills window below toolbar via react
+    page-display: base (as-pair vp-w vp-h) white react [
+        vp-w: max 200 face/parent/size/x - 24
+        vp-h: max 200 face/parent/size/y - toolbar-h - 24
+        face/size: as-pair vp-w vp-h
+        update-display
+    ]
+
+    ; Scrollers — at window edges, hidden unless overflow
     scroller-v: scroller (as-pair 18 vp-h) [
         if not empty? pages [
             page-img: get-zoomed current-page zoom
@@ -211,19 +215,14 @@ view/options/flags compose/deep [
             update-display
         ]
     ]
-    return
-
-    ; Horizontal scroller
     scroller-h: scroller (as-pair vp-w 18) [
         if not empty? pages [
             page-img: get-zoomed current-page zoom
             max-sx: max 0 page-img/size/x - vp-w
             scroll-x: to integer! face/data * max-sx
             update-display
-        ]
+        }
     ]
-    return
 
-    on-resize [resize-viewport]
     do [update-display]
-][size: (as-pair vp-w + 40 vp-h + toolbar-h + 40)]['resize]
+][size: (as-pair vp-w + 24 vp-h + toolbar-h + 24)]['resize]

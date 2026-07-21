@@ -1340,4 +1340,7 @@ context [
         draw sz compose/deep [scale (z) (z) (page-block)]
     ]
 
+    set 'get-page-width does [page-width]
+    set 'get-page-height does [page-height]
+
 ];context
