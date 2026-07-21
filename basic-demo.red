@@ -15,6 +15,11 @@ threethousand: 3000
 fourthousand: 4000
 widget-C: [[red] "Widget C" [12 green '>] -45 [6.2 '>] total [red 10.3] " Check" [white 255.165.0]]
 
+get-items: func [res [block!]] [
+    repeat i 30 [append/only res reduce ["Item " i]]
+    res
+]
+
 rpt: copy []
 append rpt reduce [
     'HEADER
@@ -40,22 +45,11 @@ append rpt reduce [
         ["TOTALS" ['b] "" "$13'780.00" ""]
     ]
     ["and here another columns demo" ['u 'h2]]
-    get-items: func [res [block!]] [repeat i 30 [append/only res reduce ["Item " i]] res]
     get-items ['COLUMN]
     'FOOTER
     []
     [['b] " Confidential " ['h3 white blue] "%DATE%" "Page %PAGE% of %PAGES%"]
 ]
-
-;--- Generate report (returns draw blocks) ---
-pages: generate-report rpt
-
-;--- Viewer state ---
-current-page: 1
-zoom: 100
-scroll-y: 0
-vp-w: 600
-vp-h: 820
 
 ;--- Orientation popup ---
 is-landscape: false
@@ -71,7 +65,13 @@ view/options layout [
 either is-landscape [paper-format/landscape 'a4][paper-format 'a4]
 pages: generate-report rpt
 
-;--- Zoom levels ---
+;--- Viewer state ---
+current-page: 1
+zoom: 100
+scroll-y: 0
+vp-w: 600
+vp-h: 800
+
 zoom-levels: [25 50 75 100 125 150 200]
 
 zoom-in: does [
@@ -106,78 +106,59 @@ zoom-fit-page: does [
     update-display
 ]
 
-;--- Render and display ---
 update-display: does [
     if any [empty? pages current-page > length? pages][exit]
     page-img: render-page pick pages current-page zoom
     full-h: page-img/size/y
     full-w: page-img/size/x
-
-    ; Clamp scroll
     max-scroll: max 0 full-h - vp-h
     if scroll-y > max-scroll [scroll-y: max-scroll]
     if scroll-y < 0 [scroll-y: 0]
-
-    ; Crop visible portion
     vw: min vp-w full-w
     vh: min vp-h full-h
-    visible: draw as-pair vw vh [
-        image page-img (as-pair 0 (0 - scroll-y)) as-pair full-w full-h
+    visible: draw as-pair vw vh compose [
+        image page-img (as-pair 0 (0 - scroll-y)) (as-pair full-w full-h)
     ]
     page-display/image: visible
-
-    ; Update UI
     page-label/text: rejoin ["Page " current-page " / " length? pages]
     zoom-label/text: rejoin [zoom "%"]
-
-    ; Update scroller
     either full-h > vp-h [
-        sc/data: either max-scroll > 0 [to float! scroll-y / max-scroll][0.0]
+        scroller1/data: either max-scroll > 0 [to float! scroll-y / max-scroll][0.0]
     ][
-        sc/data: 0.0
+        scroller1/data: 0.0
     ]
 ]
 
 ;--- Build viewer UI ---
-view/options compose/deep [
+view/options/flags compose/deep [
     title "Draw Report Viewer"
     below
 
-    ; Toolbar row 1: page navigation
+    ; Toolbar
     across
-    tbar: panel 0x0 [
-        across
-        button "<<" [current-page: 1 scroll-y: 0 update-display]
-        button "<" [
-            if current-page > 1 [current-page: current-page - 1]
-            scroll-y: 0 update-display
-        ]
-        page-label: text 80x20 "Page 0 / 0" center
-        button ">" [
-            if current-page < length? pages [current-page: current-page + 1]
-            scroll-y: 0 update-display
-        ]
-        button ">>" [current-page: length? pages scroll-y: 0 update-display]
-        return
+    button "<<" [current-page: 1 scroll-y: 0 update-display]
+    button "<" [
+        if current-page > 1 [current-page: current-page - 1]
+        scroll-y: 0 update-display
     ]
-
-    ; Toolbar row 2: zoom controls
-    across
-    zbar: panel 0x0 [
-        across
-        button "-" 30x22 [zoom-out]
-        zoom-label: text 50x20 "100%" center
-        button "+" 30x22 [zoom-in]
-        button "Fit W" [zoom-fit-width]
-        button "Fit Page" [zoom-fit-page]
-        return
+    page-label: text 90x24 "Page 0 / 0" center
+    button ">" [
+        if current-page < length? pages [current-page: current-page + 1]
+        scroll-y: 0 update-display
     ]
+    button ">>" [current-page: length? pages scroll-y: 0 update-display]
+    pad 20x0
+    button 30x24 "-" [zoom-out]
+    zoom-label: text 50x24 "100%" center
+    button 30x24 "+" [zoom-in]
+    button "Fit W" [zoom-fit-width]
+    button "Fit Page" [zoom-fit-page]
     return
 
     ; Page viewport + scroller
     across
     page-display: base (as-pair vp-w vp-h) white
-    sc: scroller (as-pair 16 vp-h) [
+    scroller1: scroller (as-pair 18 vp-h) [
         if not empty? pages [
             page-img: render-page pick pages current-page zoom
             max-scroll: max 0 page-img/size/y - vp-h
@@ -188,4 +169,4 @@ view/options compose/deep [
     return
 
     do [update-display]
-][size: (as-pair vp-w + 30 vp-h + 80)]
+][size: (as-pair vp-w + 40 vp-h + 60)]['resize]

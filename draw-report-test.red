@@ -101,7 +101,7 @@ current-page: 1
 zoom: 100
 scroll-y: 0
 vp-w: 600
-vp-h: 820
+vp-h: 800
 
 zoom-levels: [25 50 75 100 125 150 200]
 
@@ -147,51 +147,49 @@ update-display: does [
     if scroll-y < 0 [scroll-y: 0]
     vw: min vp-w full-w
     vh: min vp-h full-h
-    visible: draw as-pair vw vh [
-        image page-img (as-pair 0 (0 - scroll-y)) as-pair full-w full-h
+    visible: draw as-pair vw vh compose [
+        image page-img (as-pair 0 (0 - scroll-y)) (as-pair full-w full-h)
     ]
     page-display/image: visible
     page-label/text: rejoin ["Page " current-page " / " length? pages]
     zoom-label/text: rejoin [zoom "%"]
     either full-h > vp-h [
-        sc/data: either max-scroll > 0 [to float! scroll-y / max-scroll][0.0]
+        scroller1/data: either max-scroll > 0 [to float! scroll-y / max-scroll][0.0]
     ][
-        sc/data: 0.0
+        scroller1/data: 0.0
     ]
 ]
 
-view/options compose/deep [
+;--- Build viewer UI ---
+view/options/flags compose/deep [
     title "Draw Report Viewer"
     below
+
+    ; Toolbar
     across
-    panel 0x0 [
-        across
-        button "<<" [current-page: 1 scroll-y: 0 update-display]
-        button "<" [
-            if current-page > 1 [current-page: current-page - 1]
-            scroll-y: 0 update-display
-        ]
-        page-label: text 80x20 "Page 0 / 0" center
-        button ">" [
-            if current-page < length? pages [current-page: current-page + 1]
-            scroll-y: 0 update-display
-        ]
-        button ">>" [current-page: length? pages scroll-y: 0 update-display]
-        return
+    button "<<" [current-page: 1 scroll-y: 0 update-display]
+    button "<" [
+        if current-page > 1 [current-page: current-page - 1]
+        scroll-y: 0 update-display
     ]
-    panel 0x0 [
-        across
-        button "-" 30x22 [zoom-out]
-        zoom-label: text 50x20 "100%" center
-        button "+" 30x22 [zoom-in]
-        button "Fit W" [zoom-fit-width]
-        button "Fit Page" [zoom-fit-page]
-        return
+    page-label: text 90x24 "Page 0 / 0" center
+    button ">" [
+        if current-page < length? pages [current-page: current-page + 1]
+        scroll-y: 0 update-display
     ]
+    button ">>" [current-page: length? pages scroll-y: 0 update-display]
+    pad 20x0
+    button 30x24 "-" [zoom-out]
+    zoom-label: text 50x24 "100%" center
+    button 30x24 "+" [zoom-in]
+    button "Fit W" [zoom-fit-width]
+    button "Fit Page" [zoom-fit-page]
     return
+
+    ; Page viewport + scroller
     across
     page-display: base (as-pair vp-w vp-h) white
-    sc: scroller (as-pair 16 vp-h) [
+    scroller1: scroller (as-pair 18 vp-h) [
         if not empty? pages [
             page-img: render-page pick pages current-page zoom
             max-scroll: max 0 page-img/size/y - vp-h
@@ -200,5 +198,6 @@ view/options compose/deep [
         ]
     ]
     return
+
     do [update-display]
-][size: (as-pair vp-w + 30 vp-h + 80)]
+][size: (as-pair vp-w + 40 vp-h + 60)]['resize]
