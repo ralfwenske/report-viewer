@@ -4,7 +4,7 @@ Red [
     Purpose: "Generate multi-page A4 reports using Red's draw dialect — no PostScript, no ps2pdf"
     Author: "Ralf Wenske"
     Helpers: "Kilo and MiMo-V2.5-Pro"
-    Exports: [generate-report paper-format fontsize]
+    Exports: [generate-report render-page paper-format fontsize]
     Date: 2026-07-20
     Needs: 'View
 ]
@@ -1327,13 +1327,17 @@ context [
         ]
 
 
-        ;--- Convert draw blocks to images ---
-        result: copy []
-        foreach page pages [
-            append/only result draw as-pair page-width page-height page
-        ]
+        ;--- Return draw blocks; use render-page to render at any zoom ---
+        pages
+    ]
 
-        result
+    set 'render-page function [
+        "Render a page draw block at given zoom percent (100 = native size)"
+        page-block [block!] zoom [integer!]
+    ][
+        z: zoom / 100.0
+        sz: as-pair to integer! page-width * z  to integer! page-height * z
+        draw sz compose/deep [scale (z) (z) (page-block)]
     ]
 
 ];context

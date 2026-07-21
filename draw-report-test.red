@@ -1,5 +1,5 @@
 Red [
-    Title: "Draw Report Viewer"
+    Title: "Draw Report Viewer Test"
     Needs: 'View
 ]
 
@@ -33,9 +33,7 @@ total: 1890.0
 zero: 0
 
 pdf-report: function [] [
-
     rpt: copy std-header "Long Report Demo"
-
     append rpt [
         'CONTENT
         ["Sales Summary for " ['b] "Q1 2015" ['u]]
@@ -79,9 +77,7 @@ pdf-report: function [] [
     append rpt ["2) second paren"]
     append rpt ["We start a new page (if needed)"]
     append rpt [{(each 'RED' word columns tests min 10 lines for page breaks)}]
-
     append rpt what-columns
-
     append rpt std-footer ""
     rpt
 ]
@@ -97,40 +93,112 @@ view/options layout [
     button "Landscape" [is-landscape: true unview]
 ][size: 280x80]
 
-;--- Set paper format ---
-either is-landscape [
-    paper-format/landscape 'a4
-    pw: 842 ph: 595
-][
-    paper-format 'a4
-    pw: 595 ph: 842
+either is-landscape [paper-format/landscape 'a4][paper-format 'a4]
+pages: generate-report pdf-report
+
+;--- Viewer state ---
+current-page: 1
+zoom: 100
+scroll-y: 0
+vp-w: 600
+vp-h: 820
+
+zoom-levels: [25 50 75 100 125 150 200]
+
+zoom-in: does [
+    foreach z zoom-levels [if z > zoom [zoom: z break]]
+    scroll-y: 0
+    update-display
 ]
 
-win-w: pw + 105
-win-h: ph + 108
+zoom-out: does [
+    reverse zoom-levels
+    foreach z zoom-levels [if z < zoom [zoom: z break]]
+    reverse zoom-levels
+    scroll-y: 0
+    update-display
+]
 
-;--- Generate report ---
-pages: generate-report pdf-report
-current-page: 1
+zoom-fit-width: does [
+    z: to integer! vp-w / 595.0 * 100
+    zoom: first zoom-levels
+    foreach lz zoom-levels [if lz <= z [zoom: lz]]
+    scroll-y: 0
+    update-display
+]
 
-show-page: does [
-    if all [pages current-page <= length? pages][
-        page-display/image: pick pages current-page
-        page-label/text: rejoin ["Page " current-page " of " length? pages]
+zoom-fit-page: does [
+    zw: to integer! vp-w / 595.0 * 100
+    zh: to integer! vp-h / 842.0 * 100
+    z: min zw zh
+    zoom: first zoom-levels
+    foreach lz zoom-levels [if lz <= z [zoom: lz]]
+    scroll-y: 0
+    update-display
+]
+
+update-display: does [
+    if any [empty? pages current-page > length? pages][exit]
+    page-img: render-page pick pages current-page zoom
+    full-h: page-img/size/y
+    full-w: page-img/size/x
+    max-scroll: max 0 full-h - vp-h
+    if scroll-y > max-scroll [scroll-y: max-scroll]
+    if scroll-y < 0 [scroll-y: 0]
+    vw: min vp-w full-w
+    vh: min vp-h full-h
+    visible: draw as-pair vw vh [
+        image page-img (as-pair 0 (0 - scroll-y)) as-pair full-w full-h
+    ]
+    page-display/image: visible
+    page-label/text: rejoin ["Page " current-page " / " length? pages]
+    zoom-label/text: rejoin [zoom "%"]
+    either full-h > vp-h [
+        sc/data: either max-scroll > 0 [to float! scroll-y / max-scroll][0.0]
+    ][
+        sc/data: 0.0
     ]
 ]
 
-;--- Main viewer ---
-view/options compose [
+view/options compose/deep [
     title "Draw Report Viewer"
     below
-    page-label: text (as-pair pw 20) "Page 0 of 0" center
-    page-display: base (as-pair pw ph)
     across
-    button "<<" [current-page: 1 show-page]
-    button "<"  [if current-page > 1 [current-page: current-page - 1 show-page]]
-    button ">"  [if current-page < length? pages [current-page: current-page + 1 show-page]]
-    button ">>" [current-page: length? pages show-page]
-    button "Dump Source" [foreach item pdf-report [probe item]]
-    do [show-page]
-][size: (as-pair win-w win-h)]
+    panel 0x0 [
+        across
+        button "<<" [current-page: 1 scroll-y: 0 update-display]
+        button "<" [
+            if current-page > 1 [current-page: current-page - 1]
+            scroll-y: 0 update-display
+        ]
+        page-label: text 80x20 "Page 0 / 0" center
+        button ">" [
+            if current-page < length? pages [current-page: current-page + 1]
+            scroll-y: 0 update-display
+        ]
+        button ">>" [current-page: length? pages scroll-y: 0 update-display]
+        return
+    ]
+    panel 0x0 [
+        across
+        button "-" 30x22 [zoom-out]
+        zoom-label: text 50x20 "100%" center
+        button "+" 30x22 [zoom-in]
+        button "Fit W" [zoom-fit-width]
+        button "Fit Page" [zoom-fit-page]
+        return
+    ]
+    return
+    across
+    page-display: base (as-pair vp-w vp-h) white
+    sc: scroller 16x(vp-h) [
+        if not empty? pages [
+            page-img: render-page pick pages current-page zoom
+            max-scroll: max 0 page-img/size/y - vp-h
+            scroll-y: to integer! face/data * max-scroll
+            update-display
+        ]
+    ]
+    return
+    do [update-display]
+][size: (as-pair vp-w + 30 vp-h + 80)]
