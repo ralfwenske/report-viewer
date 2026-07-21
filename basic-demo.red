@@ -1,14 +1,8 @@
-Red [
-    File: %basic-demo.red
-    Title: "Draw Report Viewer — Zoom + Scroll"
-    Needs: 'View
-]
+Red [needs: 'view]
 
-unless value? 'generate-report [
-    do load %draw-report.red
-]
+do %draw-report.red
 
-;--- Report content (same DSL as report-generator) ---
+;--- Report content ---
 title: "Basic Demo"
 total: 5123.87654
 threethousand: 3000
@@ -63,166 +57,59 @@ view/options layout [
 ][size: 280x80]
 
 either is-landscape [paper-format/landscape 'a4][paper-format 'a4]
+
+;--- Generate and render all pages at native size ---
 pages: generate-report rpt
+rendered: copy []
+foreach p pages [append/only rendered render-page p 100]
 
 ;--- Viewer state ---
 current-page: 1
-zoom: 100
-scroll-x: 0
-scroll-y: 0
-vp-w: 600
-vp-h: 800
-toolbar-h: 36
+toolbar-h: 32
 
-zoom-levels: [25 50 75 100 125 150 200]
-
-;--- Cache native-resolution images ---
-native-cache: copy []
-get-native: function [pn [integer!]][
-    while [pn > (length? native-cache)][
-        append/only native-cache render-page pick pages ((length? native-cache) + 1) 100
-    ]
-    pick native-cache pn
-]
-
-;--- Zoom: scale cached native image ---
-get-zoomed: function [pn [integer!] z [integer!] /local native w h][
-    native: get-native pn
-    w: to integer! native/size/x * z / 100
-    h: to integer! native/size/y * z / 100
-    draw as-pair w h compose [image (native) 0x0 (as-pair w h)]
-]
-
-zoom-in: does [
-    foreach z zoom-levels [if z > zoom [zoom: z break]]
-    update-display
-]
-
-zoom-out: does [
-    reverse zoom-levels
-    foreach z zoom-levels [if z < zoom [zoom: z break]]
-    reverse zoom-levels
-    update-display
-]
-
-zoom-fit-width: does [
-    z: to integer! vp-w / (to float! get-page-width) * 100
-    zoom: first zoom-levels
-    foreach lz zoom-levels [if lz <= z [zoom: lz]]
-    scroll-x: 0 scroll-y: 0
-    update-display
-]
-
-zoom-fit-page: does [
-    zw: to integer! vp-w / (to float! get-page-width) * 100
-    zh: to integer! vp-h / (to float! get-page-height) * 100
-    z: min zw zh
-    zoom: first zoom-levels
-    foreach lz zoom-levels [if lz <= z [zoom: lz]]
-    scroll-x: 0 scroll-y: 0
-    update-display
-]
-
-update-display: does [
-    if any [empty? pages current-page > length? pages][exit]
-    page-img: get-zoomed current-page zoom
-    full-w: page-img/size/x
-    full-h: page-img/size/y
-
-    ; Clamp scroll
-    max-sx: max 0 full-w - vp-w
-    max-sy: max 0 full-h - vp-h
-    if scroll-x > max-sx [scroll-x: max-sx]
-    if scroll-y > max-sy [scroll-y: max-sy]
-    if scroll-x < 0 [scroll-x: 0]
-    if scroll-y < 0 [scroll-y: 0]
-
-    ; Draw page centered (if smaller) or scrolled (if larger)
-    either all [full-w <= vp-w full-h <= vp-h][
-        ; Page fits — center it
-        cx: to integer! (vp-w - full-w) / 2
-        cy: to integer! (vp-h - full-h) / 2
-        visible: draw as-pair vp-w vp-h compose [
-            fill-pen white pen off box 0x0 (as-pair vp-w vp-h)
-            image page-img (as-pair cx cy) (as-pair full-w full-h)
-        ]
-    ][
-        ; Page overflows — crop with scroll
-        visible: draw as-pair vp-w vp-h compose [
-            fill-pen white pen off box 0x0 (as-pair vp-w vp-h)
-            image page-img (as-pair (0 - scroll-x) (0 - scroll-y)) (as-pair full-w full-h)
-        ]
-    ]
-    page-display/image: visible
-
-    ; Update labels
-    page-label/text: rejoin ["Page " current-page " / " length? pages]
-    zoom-label/text: rejoin [zoom "%"]
-
-    ; Scrollers: only visible when page overflows viewport
-    needs-v?: full-h > vp-h
-    needs-h?: full-w > vp-w
-    scroller-v/visible?: needs-v?
-    scroller-h/visible?: needs-h?
-    if needs-v? [
-        scroller-v/data: either max-sy > 0 [to float! scroll-y / max-sy][0.0]
-    ]
-    if needs-h? [
-        scroller-h/data: either max-sx > 0 [to float! scroll-x / max-sx][0.0]
+show-page: does [
+    if all [not empty? rendered current-page >= 1 current-page <= length? rendered][
+        img-f/image: pick rendered current-page
+        page-label/text: rejoin ["Page " current-page " / " length? rendered]
     ]
 ]
 
-;--- Build viewer UI ---
-view/options/flags compose/deep [
-    title "Draw Report Viewer"
-    below
+;--- Build viewer ---
+win: layout/flags [
+    title "Report Viewer — Page View"
+    size 800x600
 
-    ; Toolbar
-    across
-    button "<<" [current-page: 1 scroll-x: 0 scroll-y: 0 update-display]
-    button "<" [
-        if current-page > 1 [current-page: current-page - 1]
-        scroll-x: 0 scroll-y: 0 update-display
-    ]
-    page-label: text 90x24 "Page 0 / 0" center
-    button ">" [
-        if current-page < length? pages [current-page: current-page + 1]
-        scroll-x: 0 scroll-y: 0 update-display
-    ]
-    button ">>" [current-page: length? pages scroll-x: 0 scroll-y: 0 update-display]
-    pad 20x0
-    button 30x24 "-" [zoom-out]
-    zoom-label: text 50x24 "100%" center
-    button 30x24 "+" [zoom-in]
-    button "Fit W" [zoom-fit-width]
-    button "Fit Page" [zoom-fit-page]
+    ; Toolbar — scales to window width
+    p: panel white 100x30 [
+        across
+        button "<<" [current-page: 1 show-page]
+        button "<" [if current-page > 1 [current-page: current-page - 1 show-page]]
+        page-label: text 120 "" center
+        button ">" [if current-page < length? rendered [current-page: current-page + 1 show-page]]
+        button ">>" [current-page: length? rendered show-page]
+    ] react [face/size: as-pair (face/parent/size/x - 15) toolbar-h]
     return
 
-    ; Page viewport — fills window below toolbar via react
-    page-display: base (as-pair vp-w vp-h) white react [
-        vp-w: max 200 face/parent/size/x - 24
-        vp-h: max 200 face/parent/size/y - toolbar-h - 24
-        face/size: as-pair vp-w vp-h
-        update-display
-    ]
-
-    ; Scrollers — at window edges, hidden unless overflow
-    scroller-v: scroller (as-pair 18 vp-h) [
-        if not empty? pages [
-            page-img: get-zoomed current-page zoom
-            max-sy: max 0 page-img/size/y - vp-h
-            scroll-y: to integer! face/data * max-sy
-            update-display
+    ; Page image — scales to fit window while maintaining aspect ratio
+    img-f: image white
+        react [
+            parentsize: face/parent/size
+            img: face/image
+            unless img [exit]
+            iw: img/size/x
+            ih: img/size/y
+            avail-w: parentsize/x - 15
+            avail-h: parentsize/y - toolbar-h - 15
+            either (iw / ih) > (avail-w / avail-h) [
+                face/size: as-pair avail-w (avail-w * ih / iw)
+                face/offset/x: 0
+            ][
+                face/size: as-pair (avail-h * iw / ih) avail-h
+                face/offset/x: to-integer (avail-w - face/size/x) / 2
+            ]
         ]
-    ]
-    scroller-h: scroller (as-pair vp-w 18) [
-        if not empty? pages [
-            page-img: get-zoomed current-page zoom
-            max-sx: max 0 page-img/size/x - vp-w
-            scroll-x: to integer! face/data * max-sx
-            update-display
-        }
-    ]
+] ['resize]
 
-    do [update-display]
-][size: (as-pair vp-w + 24 vp-h + toolbar-h + 24)]['resize]
+; Show first page and open viewer
+show-page
+view win
