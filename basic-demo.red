@@ -65,15 +65,50 @@ foreach p pages [append/only rendered render-page p 100]
 
 ;--- Viewer state ---
 current-page: 1
+current-img: none
 fit-width?: false
 scroll-y: 0
 toolbar-h: 32
 
+scale-view: does [
+    unless current-img [exit]
+    parentsize: img-f/parent/size
+    iw: current-img/size/x
+    ih: current-img/size/y
+    avail-w: parentsize/x - 15
+    avail-h: parentsize/y - toolbar-h - 15
+    either fit-width? [
+        z: avail-w / iw
+        scaled-h: to integer! avail-w * ih / iw
+        max-scroll: max 0 scaled-h - avail-h
+        scroll-y: max 0 min scroll-y max-scroll
+        vis-h: min scaled-h avail-h
+        native-y: to integer! scroll-y / z
+        img-f/image: draw as-pair avail-w vis-h compose/deep [
+            scale (z) (z)
+            image (current-img) (as-pair 0 (0 - native-y)) (as-pair iw ih)
+        ]
+        img-f/size: as-pair avail-w vis-h
+        img-f/offset/x: 0
+    ][
+        img-f/image: current-img
+        either (iw / ih) > (avail-w / avail-h) [
+            img-f/size: as-pair avail-w to integer! avail-w * ih / iw
+            img-f/offset/x: 0
+        ][
+            img-f/size: as-pair to integer! avail-h * iw / ih  avail-h
+            img-f/offset/x: to integer! (avail-w - img-f/size/x) / 2
+        ]
+        scroll-y: 0
+    ]
+]
+
 show-page: does [
     if all [not empty? rendered current-page >= 1 current-page <= length? rendered][
-        img-f/image: pick rendered current-page
+        current-img: pick rendered current-page
         scroll-y: 0
         page-label/text: rejoin ["Page " current-page " / " length? rendered]
+        scale-view
     ]
 ]
 
@@ -91,76 +126,48 @@ win: layout/flags [
         button ">" [if current-page < length? rendered [current-page: current-page + 1 show-page]]
         button ">>" [current-page: length? rendered show-page]
         pad 10x0
-        fit-cb: check "Fit Width" [fit-width?: fit-cb/data scroll-y: 0]
+        fit-cb: check "Fit Width" [
+            fit-width?: fit-cb/data
+            scroll-y: 0
+            scale-view
+        ]
     ] react [face/size: as-pair (face/parent/size/x - 15) toolbar-h]
     return
 
     ; Page image
     img-f: image white
         on-wheel [
+            delta: either pair? event/picked [event/picked/y][to integer! event/picked]
             either fit-width? [
-                scroll-y: max 0 scroll-y - (event/picked/y * 40)
-                max-scroll: max 0 img-f/size/y - img-f/parent/size/y + toolbar-h + 15
-                scroll-y: min scroll-y max-scroll
-                img-f/offset/y: 0 - scroll-y
+                scroll-y: scroll-y - (delta * 3)
+                scale-view
             ][
-                ; Page view: switch pages with wheel
-                either event/picked/y < 0 [
+                either delta < 0 [
                     if current-page < length? rendered [current-page: current-page + 1 show-page]
                 ][
                     if current-page > 1 [current-page: current-page - 1 show-page]
                 ]
             ]
         ]
-        react [
-            parentsize: face/parent/size
-            img: face/image
-            unless img [exit]
-            iw: img/size/x
-            ih: img/size/y
-            avail-w: parentsize/x - 15
-            avail-h: parentsize/y - toolbar-h - 15
-            either fit-width? [
-                ; Fit width: page width = viewport width, height proportional
-                face/size: as-pair avail-w to-integer (avail-w * ih / iw)
-                face/offset/x: 0
-                ; Clamp scroll
-                max-scroll: max 0 face/size/y - avail-h
-                scroll-y: min scroll-y max-scroll
-                face/offset/y: 0 - scroll-y
-            ][
-                ; Page view: fit entire page, center
-                either (iw / ih) > (avail-w / avail-h) [
-                    face/size: as-pair avail-w to-integer (avail-w * ih / iw)
-                    face/offset/x: 0
-                ][
-                    face/size: as-pair to-integer (avail-h * iw / ih) avail-h
-                    face/offset/x: to-integer (avail-w - face/size/x) / 2
+        on-key [
+            case [
+                event/key = 'left  [if current-page > 1 [current-page: current-page - 1 show-page]]
+                event/key = 'right [if current-page < length? rendered [current-page: current-page + 1 show-page]]
+                all [fit-width? event/key = 'up] [
+                    scroll-y: max 0 scroll-y - 40
+                    scale-view
                 ]
-                scroll-y: 0
-                face/offset/y: 0
+                all [fit-width? event/key = 'down] [
+                    scroll-y: scroll-y + 40
+                    scale-view
+                ]
             ]
+        ]
+        react [
+            face/parent/size
+            scale-view
         ]
 ] ['resize]
-
-; Keyboard: arrows for page nav and scroll
-win/extra: make object! [
-    on-key: func [event [event!] /local max-scroll][
-        case [
-            event/key = 'left  [if current-page > 1 [current-page: current-page - 1 show-page]]
-            event/key = 'right [if current-page < length? rendered [current-page: current-page + 1 show-page]]
-            all [fit-width? event/key = 'up] [
-                scroll-y: max 0 scroll-y - 40
-                img-f/offset/y: 0 - scroll-y
-            ]
-            all [fit-width? event/key = 'down] [
-                max-scroll: max 0 img-f/size/y - img-f/parent/size/y + toolbar-h + 15
-                scroll-y: min max-scroll scroll-y + 40
-                img-f/offset/y: 0 - scroll-y
-            ]
-        ]
-    ]
-]
 
 show-page
 view win
