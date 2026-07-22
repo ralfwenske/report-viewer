@@ -1441,25 +1441,26 @@ context [
                     face/size: as-pair (face/parent/size/x - 15) (face/parent/size/y - toolbar-h - 15)
                     scale-view
                 ]
-                do [show-page]
-        ] ['resize]
 
-        win/actors: context [
-            on-key: func [event [event!]][
-                case [
-                    event/key = 'left  [if current-page > 1 [current-page: current-page - 1 show-page]]
-                    event/key = 'right [if current-page < length? rendered [current-page: current-page + 1 show-page]]
-                    all [fit-width? event/key = 'up] [
-                        scroll-y: max 0 scroll-y - 40
-                        scale-view
-                    ]
-                    all [fit-width? event/key = 'down] [
-                        scroll-y: scroll-y + 40
-                        scale-view
+            ; Keyboard overlay — transparent base over viewport for focus + key events
+            key-f: base 0.0.0.0 600x800
+                on-key [
+                    case [
+                        event/key = 'left  [if current-page > 1 [current-page: current-page - 1 show-page]]
+                        event/key = 'right [if current-page < length? rendered [current-page: current-page + 1 show-page]]
+                        all [fit-width? event/key = 'up] [
+                            scroll-y: max 0 scroll-y - 40
+                            scale-view
+                        ]
+                        all [fit-width? event/key = 'down] [
+                            scroll-y: scroll-y + 40
+                            scale-view
+                        ]
                     ]
                 ]
-            ]
-        ]
+                react [face/size: clip-f/size]
+                do [show-page]
+        ] ['resize]
 
         view win
     ] ; show-viewer
