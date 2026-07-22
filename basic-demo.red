@@ -66,6 +66,8 @@ foreach p pages [append/only rendered render-page p 100]
 ;--- Viewer state ---
 current-page: 1
 current-img: none
+scaled-img: none
+scaled-w: 0
 fit-width?: false
 scroll-y: 0
 toolbar-h: 32
@@ -78,15 +80,22 @@ scale-view: does [
     avail-w: parentsize/x - 15
     avail-h: parentsize/y - toolbar-h - 15
     either fit-width? [
-        scaled-h: to integer! avail-w * ih / iw
+        ; Invalidate cache if width changed or no cache
+        either any [none? scaled-img scaled-w <> avail-w][
+            scaled-w: avail-w
+            scaled-h: to integer! avail-w * ih / iw
+            scaled-img: draw as-pair scaled-w scaled-h compose [image (current-img) 0x0 (as-pair scaled-w scaled-h)]
+        ][
+            scaled-h: scaled-img/size/y
+        ]
         max-scroll: max 0 scaled-h - avail-h
         scroll-y: max 0 min scroll-y max-scroll
-        ; Scale full page to viewport width, then crop visible portion
-        scaled: draw as-pair avail-w scaled-h compose [image (current-img) 0x0 (as-pair avail-w scaled-h)]
-        img-f/image: draw as-pair avail-w avail-h compose [image (scaled) (as-pair 0 (0 - scroll-y)) (as-pair avail-w scaled-h)]
+        ; Crop visible portion from cached scaled image
+        img-f/image: draw as-pair avail-w avail-h compose [image (scaled-img) (as-pair 0 (0 - scroll-y)) (as-pair scaled-w scaled-h)]
         img-f/size: as-pair avail-w avail-h
         img-f/offset/x: 0
     ][
+        scaled-img: none
         img-f/image: current-img
         either (iw / ih) > (avail-w / avail-h) [
             img-f/size: as-pair avail-w to integer! avail-w * ih / iw
@@ -102,6 +111,7 @@ scale-view: does [
 show-page: does [
     if all [not empty? rendered current-page >= 1 current-page <= length? rendered][
         current-img: pick rendered current-page
+        scaled-img: none
         scroll-y: 0
         page-label/text: rejoin ["Page " current-page " / " length? rendered]
         scale-view
