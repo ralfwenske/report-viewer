@@ -5,7 +5,7 @@ view [
     size 1024x768
     
     ; on-key FIRST — binds to the window/layout, not to any face
-    on-key: func [face event] [
+    on-key [
         case [
             event/key = #"+" [print "Zoom in"]
             event/key = #"-" [print "Zoom out"]
@@ -16,23 +16,21 @@ view [
     ]
     
     ; Top white panel with button
-    panel [
-        white
+    panel  white [
         across
         btn-load: button "Load Image" [
-            file: request-file/filter ["Image Files" %.png %.jpg]
+            file: request-file
+            probe file
             if file [
-                img/data: load first file
+                img/data: to image! load first file
                 show img
             ]
         ]
     ]
-    
     return
     
     ; Scrollable image area
     img-panel: panel [
-        flags [scroll]
         img: image 800x600
     ]
 ]

@@ -98,6 +98,6 @@ either is-landscape [paper-format/landscape 'a4][paper-format 'a4]
 ;--- Generate and render all pages at native size ---
 pages: generate-report pdf-report
 rendered: copy []
-foreach p pages [append/only rendered render-page p 100]
+foreach p pages [append/only rendered render-page p 200]
 
 show-viewer/title rendered "Draw Report Viewer Test"

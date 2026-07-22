@@ -18,7 +18,7 @@ do %draw-report.red
 
 ```red
 generate-report content          ; returns block of draw blocks (one per page)
-render-page page-block zoom      ; render a draw block at zoom % (100 = native size)
+render-page page-block zoom      ; render a draw block at zoom % (200 = 2× resolution)
 show-viewer/title rendered "..." ; display rendered pages in viewer window
 paper-format 'a4                 ; set paper size (default: a4)
 paper-format/landscape 'a4       ; set paper size in landscape orientation
@@ -30,9 +30,11 @@ fontsize 14                      ; set font size in points (default: 12)
 ```red
 pages: generate-report rpt
 rendered: copy []
-foreach p pages [append/only rendered render-page p 100]
+foreach p pages [append/only rendered render-page p 200]
 show-viewer/title rendered "My Report"
 ```
+
+`render-page p 200` renders at 2× resolution (1190×1684 for A4) for sharp text at any zoom. Only one page image is held at a time, so memory stays flat.
 
 ## The one rule
 
