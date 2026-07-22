@@ -1425,9 +1425,6 @@ context [
                 img-f: image white
             ]
                 on-wheel [
-                    ;delta: either all [event/picked pair? event/picked][event/picked/y][
-                    ;    either all [event/picked float? event/picked][to integer! event/picked][0]
-                    ;]
                     delta: either event/picked [event/picked][0]
                     either fit-width? [
                         scroll-y: scroll-y - (30 * delta)
@@ -1440,26 +1437,29 @@ context [
                         ]
                     ]
                 ]
-                on-key [
-                    case [
-                        event/key = 'left  [if current-page > 1 [current-page: current-page - 1 show-page]]
-                        event/key = 'right [if current-page < length? rendered [current-page: current-page + 1 show-page]]
-                        all [fit-width? event/key = 'up] [
-                            scroll-y: max 0 scroll-y - 40
-                            scale-view
-                        ]
-                        all [fit-width? event/key = 'down] [
-                            scroll-y: scroll-y + 40
-                            scale-view
-                        ]
-                    ]
-                ]
                 react [
                     face/size: as-pair (face/parent/size/x - 15) (face/parent/size/y - toolbar-h - 15)
                     scale-view
                 ]
                 do [show-page]
         ] ['resize]
+
+        win/actors: context [
+            on-key: func [event [event!]][
+                case [
+                    event/key = 'left  [if current-page > 1 [current-page: current-page - 1 show-page]]
+                    event/key = 'right [if current-page < length? rendered [current-page: current-page + 1 show-page]]
+                    all [fit-width? event/key = 'up] [
+                        scroll-y: max 0 scroll-y - 40
+                        scale-view
+                    ]
+                    all [fit-width? event/key = 'down] [
+                        scroll-y: scroll-y + 40
+                        scale-view
+                    ]
+                ]
+            ]
+        ]
 
         view win
     ] ; show-viewer
