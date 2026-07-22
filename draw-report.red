@@ -1428,7 +1428,9 @@ context [
                 scale-view
             ]
                 on-wheel [
-                    delta: either pair? event/picked [event/picked/y][to integer! event/picked]
+                    delta: either all [event/picked pair? event/picked][event/picked/y][
+                        either all [event/picked integer? event/picked][event/picked][0]
+                    ]
                     either fit-width? [
                         scroll-y: scroll-y - (delta * 30)
                         scale-view
