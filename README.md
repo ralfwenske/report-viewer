@@ -53,7 +53,24 @@ The built-in viewer (`show-viewer`) provides:
 - **Fit Width checkbox** — page width matches window width, scroll to see overflow
 - **Mouse wheel** — in Page View: switches pages; in Fit Width: scrolls up/down
 - **Keyboard** — Left/Right arrows: switch pages; Up/Down arrows: scroll (Fit Width mode)
+- **Navigation buttons** — `<<` `<` `>` `>>` with automatic enable/disable at boundaries
 - **Window resize** — page auto-adjusts to fill available space (`react`)
+
+### Key interactions
+
+| Action | Page View mode | Fit Width mode |
+|--------|---------------|----------------|
+| Mouse wheel up/down | Previous/next page | Scroll up/down |
+| Arrow left/right | Previous/next page | Previous/next page |
+| Arrow up/down | — | Scroll up/down |
+| `<<` button | First page | First page |
+| `<` button | Previous page | Previous page |
+| `>` button | Next page | Next page |
+| `>>` button | Last page | Last page |
+| Window resize | Page scales to fit | Page width tracks window |
+| Checkbox "Fit Width" | Switch to Fit Width | Switch to Page View |
+
+Buttons are disabled when at the first or last page.
 
 ## Examples
 

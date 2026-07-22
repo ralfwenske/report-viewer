@@ -91,7 +91,7 @@ view/options layout [
     across
     button "Portrait"  [is-landscape: false unview]
     button "Landscape" [is-landscape: true unview]
-][size: 280x80]
+][size: 280x100]
 
 either is-landscape [paper-format/landscape 'a4][paper-format 'a4]
 

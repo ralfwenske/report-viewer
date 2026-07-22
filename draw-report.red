@@ -1354,13 +1354,13 @@ context [
         scaled-w: 0
         fit-width?: false
         scroll-y: 0
-        toolbar-h: 32
+        toolbar-h: 50
 
         scale-view: does [
             unless current-img [exit]
             parentsize: clip-f/parent/size
-            vp-w: parentsize/x - 15
-            vp-h: parentsize/y - toolbar-h - 15
+            vp-w: parentsize/x - 18
+            vp-h: parentsize/y - toolbar-h - 30
             if any [vp-w < 50 vp-h < 50][exit]
             clip-f/size: as-pair vp-w vp-h
             iw: current-img/size/x
@@ -1391,12 +1391,20 @@ context [
             ]
         ]
 
+        update-buttons: does [
+            btn-first/enabled?: current-page > 1
+            btn-prev/enabled?: current-page > 1
+            btn-next/enabled?: current-page < length? rendered
+            btn-last/enabled?: current-page < length? rendered
+        ]
+
         show-page: does [
             if all [not empty? rendered current-page >= 1 current-page <= length? rendered][
                 current-img: pick rendered current-page
                 scaled-img: none
                 scroll-y: 0
                 page-label/text: rejoin ["Page " current-page " / " length? rendered]
+                update-buttons
                 scale-view
             ]
         ]
@@ -1418,20 +1426,20 @@ context [
                     ]
                 ]
             ]
-            p: panel white 100x30 [
+            p: panel white 100x50 [
                 across
-                button "<<" [current-page: 1 show-page]
-                button "<" [if current-page > 1 [current-page: current-page - 1 show-page]]
+                btn-first: button "<<" [current-page: 1 show-page]
+                btn-prev: button "<" [if current-page > 1 [current-page: current-page - 1 show-page]]
                 page-label: text 120 "" center
-                button ">" [if current-page < length? rendered [current-page: current-page + 1 show-page]]
-                button ">>" [current-page: length? rendered show-page]
+                btn-next: button ">" [if current-page < length? rendered [current-page: current-page + 1 show-page]]
+                btn-last: button ">>" [current-page: length? rendered show-page]
                 pad 10x0
                 fit-cb: check "Fit Width" [
                     fit-width?: fit-cb/data
                     scroll-y: 0
                     scale-view
                 ]
-            ] react [face/size: as-pair (face/parent/size/x - 15) toolbar-h]
+            ] react [face/size: as-pair (face/parent/size/x - 18) toolbar-h]
             return
 
             clip-f: panel white 600x800 [
@@ -1451,7 +1459,7 @@ context [
                     ]
                 ]
                 react [
-                    face/size: as-pair (face/parent/size/x - 15) (face/parent/size/y - toolbar-h - 15)
+                    face/size: as-pair (face/parent/size/x - 18) (face/parent/size/y - toolbar-h - 20)
                     scale-view
                 ]
                 do [show-page]
