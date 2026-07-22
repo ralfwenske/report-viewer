@@ -1431,6 +1431,7 @@ context [
                     delta: either event/picked [event/picked][0]
                     either fit-width? [
                         scroll-y: scroll-y - (30 * delta)
+                        scale-view
                     ][
                         either delta < 0 [
                             if current-page < length? rendered [current-page: current-page + 1 show-page]
