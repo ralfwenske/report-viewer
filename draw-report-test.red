@@ -115,17 +115,12 @@ scale-view: does [
     avail-w: parentsize/x - 15
     avail-h: parentsize/y - toolbar-h - 15
     either fit-width? [
-        z: avail-w / iw
         scaled-h: to integer! avail-w * ih / iw
         max-scroll: max 0 scaled-h - avail-h
         scroll-y: max 0 min scroll-y max-scroll
-        vis-h: min scaled-h avail-h
-        native-y: to integer! scroll-y / z
-        img-f/image: draw as-pair avail-w vis-h compose/deep [
-            scale (z) (z)
-            image (current-img) (as-pair 0 (0 - native-y)) (as-pair iw ih)
-        ]
-        img-f/size: as-pair avail-w vis-h
+        scaled: draw as-pair avail-w scaled-h compose [image (current-img) 0x0 (as-pair avail-w scaled-h)]
+        img-f/image: draw as-pair avail-w avail-h compose [image (scaled) (as-pair 0 (0 - scroll-y)) (as-pair avail-w scaled-h)]
+        img-f/size: as-pair avail-w avail-h
         img-f/offset/x: 0
     ][
         img-f/image: current-img
@@ -174,7 +169,7 @@ win: layout/flags [
         on-wheel [
             delta: either pair? event/picked [event/picked/y][to integer! event/picked]
             either fit-width? [
-                scroll-y: scroll-y - (delta * 3)
+                scroll-y: scroll-y - (delta * 30)
                 scale-view
             ][
                 either delta < 0 [
