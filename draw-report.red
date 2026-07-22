@@ -1343,4 +1343,121 @@ context [
     set 'get-page-width does [page-width]
     set 'get-page-height does [page-height]
 
+    set 'show-viewer function [
+        "Display rendered pages in a viewer window with navigation and zoom"
+        rendered [block!] "Block of image! (one per page, from render-page)"
+        /title window-title [string!] "Window title"
+    ][
+        current-page: 1
+        current-img: none
+        scaled-img: none
+        scaled-w: 0
+        fit-width?: false
+        scroll-y: 0
+        toolbar-h: 32
+
+        scale-view: does [
+            unless current-img [exit]
+            parentsize: clip-f/parent/size
+            vp-w: parentsize/x - 15
+            vp-h: parentsize/y - toolbar-h - 15
+            if any [vp-w < 50 vp-h < 50][exit]
+            clip-f/size: as-pair vp-w vp-h
+            iw: current-img/size/x
+            ih: current-img/size/y
+            either fit-width? [
+                either any [none? scaled-img scaled-w <> vp-w][
+                    scaled-w: vp-w
+                    scaled-h: to integer! vp-w * ih / iw
+                    scaled-img: draw as-pair scaled-w scaled-h compose [image (current-img) 0x0 (as-pair scaled-w scaled-h)]
+                ][
+                    scaled-h: scaled-img/size/y
+                ]
+                max-scroll: max 0 scaled-h - vp-h
+                scroll-y: max 0 min scroll-y max-scroll
+                img-f/image: scaled-img
+                img-f/size: as-pair scaled-w scaled-h
+                img-f/offset: as-pair 0 (0 - scroll-y)
+            ][
+                scaled-img: none
+                img-f/image: current-img
+                either (iw / ih) > (vp-w / vp-h) [
+                    img-f/size: as-pair vp-w to integer! vp-w * ih / iw
+                ][
+                    img-f/size: as-pair to integer! vp-h * iw / ih  vp-h
+                ]
+                img-f/offset: as-pair to integer! (vp-w - img-f/size/x) / 2  0
+                scroll-y: 0
+            ]
+        ]
+
+        show-page: does [
+            if all [not empty? rendered current-page >= 1 current-page <= length? rendered][
+                current-img: pick rendered current-page
+                scaled-img: none
+                scroll-y: 0
+                page-label/text: rejoin ["Page " current-page " / " length? rendered]
+                scale-view
+            ]
+        ]
+
+        win: layout/flags compose/deep [
+            title (either title [window-title]["Report Viewer"])
+            size 800x600
+
+            p: panel white 100x30 [
+                across
+                button "<<" [current-page: 1 show-page]
+                button "<" [if current-page > 1 [current-page: current-page - 1 show-page]]
+                page-label: text 120 "" center
+                button ">" [if current-page < length? rendered [current-page: current-page + 1 show-page]]
+                button ">>" [current-page: length? rendered show-page]
+                pad 10x0
+                fit-cb: check "Fit Width" [
+                    fit-width?: fit-cb/data
+                    scroll-y: 0
+                    scale-view
+                ]
+            ] react [face/size: as-pair (face/parent/size/x - 15) toolbar-h]
+            return
+
+            clip-f: panel white 600x800 [
+                img-f: image white
+            ] react [
+                face/size: as-pair (face/parent/size/x - 15) (face/parent/size/y - toolbar-h - 15)
+                scale-view
+            ]
+                on-wheel [
+                    delta: either pair? event/picked [event/picked/y][to integer! event/picked]
+                    either fit-width? [
+                        scroll-y: scroll-y - (delta * 30)
+                        scale-view
+                    ][
+                        either delta < 0 [
+                            if current-page < length? rendered [current-page: current-page + 1 show-page]
+                        ][
+                            if current-page > 1 [current-page: current-page - 1 show-page]
+                        ]
+                    ]
+                ]
+                on-key [
+                    case [
+                        event/key = 'left  [if current-page > 1 [current-page: current-page - 1 show-page]]
+                        event/key = 'right [if current-page < length? rendered [current-page: current-page + 1 show-page]]
+                        all [fit-width? event/key = 'up] [
+                            scroll-y: max 0 scroll-y - 40
+                            scale-view
+                        ]
+                        all [fit-width? event/key = 'down] [
+                            scroll-y: scroll-y + 40
+                            scale-view
+                        ]
+                    ]
+                ]
+        ] ['resize]
+
+        show-page
+        view win
+    ]
+
 ];context
