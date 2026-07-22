@@ -1400,9 +1400,9 @@ context [
                 scale-view
             ]
         ]
-
-        win: layout/flags compose/deep [
-            title (either title [window-title]["Report Viewer"])
+        a-title: (either title [window-title]["Report Viewer"])
+        win: layout/flags  [
+            title a-title
             size 800x600
 
             p: panel white 100x30 [
@@ -1425,12 +1425,12 @@ context [
                 img-f: image white
             ]
                 on-wheel [
-                    delta: either all [event/picked pair? event/picked][event/picked/y][
-                        either all [event/picked float? event/picked][to integer! event/picked][0]
-                    ]
+                    ;delta: either all [event/picked pair? event/picked][event/picked/y][
+                    ;    either all [event/picked float? event/picked][to integer! event/picked][0]
+                    ;]
+                    delta: either event/picked [event/picked][0]
                     either fit-width? [
-                        scroll-y: scroll-y - (delta * 30)
-                        scale-view
+                        scroll-y: scroll-y - (30 * delta)
                     ][
                         either delta < 0 [
                             if current-page < length? rendered [current-page: current-page + 1 show-page]
@@ -1457,10 +1457,10 @@ context [
                     face/size: as-pair (face/parent/size/x - 15) (face/parent/size/y - toolbar-h - 15)
                     scale-view
                 ]
+                do [show-page]
         ] ['resize]
 
-        show-page
         view win
-    ]
+    ] ; show-viewer
 
 ];context
