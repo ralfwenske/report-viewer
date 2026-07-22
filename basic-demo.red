@@ -65,21 +65,24 @@ foreach p pages [append/only rendered render-page p 100]
 
 ;--- Viewer state ---
 current-page: 1
+fit-width?: false
+scroll-y: 0
 toolbar-h: 32
 
 show-page: does [
     if all [not empty? rendered current-page >= 1 current-page <= length? rendered][
         img-f/image: pick rendered current-page
+        scroll-y: 0
         page-label/text: rejoin ["Page " current-page " / " length? rendered]
     ]
 ]
 
 ;--- Build viewer ---
 win: layout/flags [
-    title "Report Viewer — Page View"
+    title "Report Viewer"
     size 800x600
 
-    ; Toolbar — scales to window width
+    ; Toolbar
     p: panel white 100x30 [
         across
         button "<<" [current-page: 1 show-page]
@@ -87,11 +90,28 @@ win: layout/flags [
         page-label: text 120 "" center
         button ">" [if current-page < length? rendered [current-page: current-page + 1 show-page]]
         button ">>" [current-page: length? rendered show-page]
+        pad 10x0
+        fit-cb: check "Fit Width" [fit-width?: fit-cb/data scroll-y: 0]
     ] react [face/size: as-pair (face/parent/size/x - 15) toolbar-h]
     return
 
-    ; Page image — scales to fit window while maintaining aspect ratio
+    ; Page image
     img-f: image white
+        on-wheel [
+            either fit-width? [
+                scroll-y: max 0 scroll-y - (event/picked/y * 40)
+                max-scroll: max 0 img-f/size/y - img-f/parent/size/y + toolbar-h + 15
+                scroll-y: min scroll-y max-scroll
+                img-f/offset/y: 0 - scroll-y
+            ][
+                ; Page view: switch pages with wheel
+                either event/picked/y < 0 [
+                    if current-page < length? rendered [current-page: current-page + 1 show-page]
+                ][
+                    if current-page > 1 [current-page: current-page - 1 show-page]
+                ]
+            ]
+        ]
         react [
             parentsize: face/parent/size
             img: face/image
@@ -100,16 +120,47 @@ win: layout/flags [
             ih: img/size/y
             avail-w: parentsize/x - 15
             avail-h: parentsize/y - toolbar-h - 15
-            either (iw / ih) > (avail-w / avail-h) [
-                face/size: as-pair avail-w (avail-w * ih / iw)
+            either fit-width? [
+                ; Fit width: page width = viewport width, height proportional
+                face/size: as-pair avail-w to-integer (avail-w * ih / iw)
                 face/offset/x: 0
+                ; Clamp scroll
+                max-scroll: max 0 face/size/y - avail-h
+                scroll-y: min scroll-y max-scroll
+                face/offset/y: 0 - scroll-y
             ][
-                face/size: as-pair (avail-h * iw / ih) avail-h
-                face/offset/x: to-integer (avail-w - face/size/x) / 2
+                ; Page view: fit entire page, center
+                either (iw / ih) > (avail-w / avail-h) [
+                    face/size: as-pair avail-w to-integer (avail-w * ih / iw)
+                    face/offset/x: 0
+                ][
+                    face/size: as-pair to-integer (avail-h * iw / ih) avail-h
+                    face/offset/x: to-integer (avail-w - face/size/x) / 2
+                ]
+                scroll-y: 0
+                face/offset/y: 0
             ]
         ]
 ] ['resize]
 
-; Show first page and open viewer
+; Keyboard: arrows for page nav and scroll
+win/extra: make object! [
+    on-key: func [event [event!] /local max-scroll][
+        case [
+            event/key = 'left  [if current-page > 1 [current-page: current-page - 1 show-page]]
+            event/key = 'right [if current-page < length? rendered [current-page: current-page + 1 show-page]]
+            all [fit-width? event/key = 'up] [
+                scroll-y: max 0 scroll-y - 40
+                img-f/offset/y: 0 - scroll-y
+            ]
+            all [fit-width? event/key = 'down] [
+                max-scroll: max 0 img-f/size/y - img-f/parent/size/y + toolbar-h + 15
+                scroll-y: min max-scroll scroll-y + 40
+                img-f/offset/y: 0 - scroll-y
+            ]
+        ]
+    ]
+]
+
 show-page
 view win
