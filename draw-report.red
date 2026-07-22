@@ -1423,13 +1423,10 @@ context [
 
             clip-f: panel white 600x800 [
                 img-f: image white
-            ] react [
-                face/size: as-pair (face/parent/size/x - 15) (face/parent/size/y - toolbar-h - 15)
-                scale-view
             ]
                 on-wheel [
                     delta: either all [event/picked pair? event/picked][event/picked/y][
-                        either all [event/picked integer? event/picked][event/picked][0]
+                        either all [event/picked float? event/picked][to integer! event/picked][0]
                     ]
                     either fit-width? [
                         scroll-y: scroll-y - (delta * 30)
@@ -1455,6 +1452,10 @@ context [
                             scale-view
                         ]
                     ]
+                ]
+                react [
+                    face/size: as-pair (face/parent/size/x - 15) (face/parent/size/y - toolbar-h - 15)
+                    scale-view
                 ]
         ] ['resize]
 
