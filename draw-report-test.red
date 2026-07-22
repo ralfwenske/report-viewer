@@ -108,37 +108,39 @@ scaled-w: 0
 fit-width?: false
 scroll-y: 0
 toolbar-h: 32
+vp-w: 600
+vp-h: 800
 
 scale-view: does [
     unless current-img [exit]
-    parentsize: img-f/parent/size
+    parentsize: clip-f/parent/size
     iw: current-img/size/x
     ih: current-img/size/y
-    avail-w: parentsize/x - 15
-    avail-h: parentsize/y - toolbar-h - 15
+    vp-w: parentsize/x - 15
+    vp-h: parentsize/y - toolbar-h - 15
+    clip-f/size: as-pair vp-w vp-h
     either fit-width? [
-        either any [none? scaled-img scaled-w <> avail-w][
-            scaled-w: avail-w
-            scaled-h: to integer! avail-w * ih / iw
+        either any [none? scaled-img scaled-w <> vp-w][
+            scaled-w: vp-w
+            scaled-h: to integer! vp-w * ih / iw
             scaled-img: draw as-pair scaled-w scaled-h compose [image (current-img) 0x0 (as-pair scaled-w scaled-h)]
         ][
             scaled-h: scaled-img/size/y
         ]
-        max-scroll: max 0 scaled-h - avail-h
+        max-scroll: max 0 scaled-h - vp-h
         scroll-y: max 0 min scroll-y max-scroll
-        img-f/image: draw as-pair avail-w avail-h compose [image (scaled-img) (as-pair 0 (0 - scroll-y)) (as-pair scaled-w scaled-h)]
-        img-f/size: as-pair avail-w avail-h
-        img-f/offset/x: 0
+        img-f/image: scaled-img
+        img-f/size: as-pair scaled-w scaled-h
+        img-f/offset: as-pair 0 (0 - scroll-y)
     ][
         scaled-img: none
         img-f/image: current-img
-        either (iw / ih) > (avail-w / avail-h) [
-            img-f/size: as-pair avail-w to integer! avail-w * ih / iw
-            img-f/offset/x: 0
+        either (iw / ih) > (vp-w / vp-h) [
+            img-f/size: as-pair vp-w to integer! vp-w * ih / iw
         ][
-            img-f/size: as-pair to integer! avail-h * iw / ih  avail-h
-            img-f/offset/x: to integer! (avail-w - img-f/size/x) / 2
+            img-f/size: as-pair to integer! vp-h * iw / ih  vp-h
         ]
+        img-f/offset: as-pair to integer! (vp-w - img-f/size/x) / 2  0
         scroll-y: 0
     ]
 ]
@@ -174,7 +176,9 @@ win: layout/flags [
     ] react [face/size: as-pair (face/parent/size/x - 15) toolbar-h]
     return
 
-    img-f: image white
+    clip-f: panel white 600x800 [
+        img-f: image white
+    ] react [face/size: as-pair (face/parent/size/x - 15) (face/parent/size/y - toolbar-h - 15)]
         on-wheel [
             delta: either pair? event/picked [event/picked/y][to integer! event/picked]
             either fit-width? [
@@ -201,10 +205,6 @@ win: layout/flags [
                     scale-view
                 ]
             ]
-        ]
-        react [
-            face/parent/size
-            scale-view
         ]
 ] ['resize]
 
