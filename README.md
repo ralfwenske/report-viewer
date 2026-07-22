@@ -1,10 +1,10 @@
 # draw-report.red
 
-A Red module that generates multi-page A4 reports using Red's `draw` dialect with zoom and scroll viewing. No PostScript, no ps2pdf, no external dependencies.
+A Red module that generates multi-page A4 reports using Red's `draw` dialect with built-in page viewer. No PostScript, no ps2pdf, no external dependencies.
 
 ## How it works
 
-The module renders report content into `draw` command blocks (one per page). The `render-page` function renders any page at any zoom level via `draw <size> [scale ...]`. Pages are displayed in a Red-View window with zoom controls and scrollbar.
+The module renders report content into `draw` command blocks (one per page). The `render-page` function renders any page at native resolution. Pages are displayed in a Red-View window with Fit Width mode, mouse wheel scroll, and keyboard navigation.
 
 **Dependencies:** Red with View (`red-view`)
 
@@ -19,20 +19,19 @@ do %draw-report.red
 ```red
 generate-report content          ; returns block of draw blocks (one per page)
 render-page page-block zoom      ; render a draw block at zoom % (100 = native size)
+show-viewer/title rendered "..." ; display rendered pages in viewer window
 paper-format 'a4                 ; set paper size (default: a4)
 paper-format/landscape 'a4       ; set paper size in landscape orientation
 fontsize 14                      ; set font size in points (default: 12)
 ```
 
-### Zoom rendering
+### Typical usage
 
 ```red
 pages: generate-report rpt
-
-; Render page 1 at different zoom levels
-img-100: render-page pick pages 1 100   ; 595x842 (native)
-img-50:  render-page pick pages 1 50    ; 297x421 (half size)
-img-200: render-page pick pages 1 200   ; 1190x1684 (double)
+rendered: copy []
+foreach p pages [append/only rendered render-page p 100]
+show-viewer/title rendered "My Report"
 ```
 
 ## The one rule
@@ -47,19 +46,19 @@ All styles work everywhere. See the [report-generator README](../report-generato
 
 ## Viewer features
 
-Both demo files include a full viewer with:
+The built-in viewer (`show-viewer`) provides:
 
 - **Orientation popup** — choose portrait or landscape before opening
-- **Zoom controls** — `−` / `+` buttons, Fit Width, Fit Page
-- **Scrollable viewport** — vertical scroller for pages taller than the viewport
-- **Page navigation** — `<<` / `<` / `>` / `>>` buttons
-
-Zoom levels: 25%, 50%, 75%, 100%, 125%, 150%, 200%
+- **Page View** (default) — entire page fits the window, auto-scales on resize
+- **Fit Width checkbox** — page width matches window width, scroll to see overflow
+- **Mouse wheel** — in Page View: switches pages; in Fit Width: scrolls up/down
+- **Keyboard** — Left/Right arrows: switch pages; Up/Down arrows: scroll (Fit Width mode)
+- **Window resize** — page auto-adjusts to fill available space (`react`)
 
 ## Examples
 
-- `draw-report-test.red` — full test harness with all features
 - `basic-demo.red` — minimal demo
+- `draw-report-test.red` — full test harness with tables, columns, styles
 
 ## Differences from report-generator
 
@@ -67,14 +66,15 @@ Zoom levels: 25%, 50%, 75%, 100%, 125%, 150%, 200%
 |---|---|---|
 | Output | PostScript → PDF (via ps2pdf) | draw blocks → images (in-memory) |
 | Dependencies | Ghostscript (ps2pdf) | None (pure Red) |
-| Viewing | PDF viewer (external) | Red-View with zoom + scroll |
+| Viewing | PDF viewer (external) | Red-View with Fit Width + scroll |
 | Content DSL | Identical | Identical |
 | Font metrics | PostScript `stringwidth` | `size-text/with` |
 | Coordinates | PostScript (Y up from bottom) | Draw (Y down from top) |
-| Zoom | Fixed (PDF page size) | Any % via `render-page` |
 
 ## Architecture
 
 Same `context [...]` structure as report-generator. All parsing, formatting, style, and layout code is identical. The render layer (`draw-styled-text`, `draw-rect`, etc.) emits `draw` block commands instead of PostScript strings.
 
-Font objects are created via `compose` with set-words and cached. Text measurement uses `size-text/with` on a shared face object. The Y-axis is flipped via `to-draw-y`. Text positioning accounts for draw's top-left anchoring (vs PostScript baseline).
+Font objects are created with set-words and cached by style combination and size. Text measurement uses `size-text/with` on a shared face object. The Y-axis is flipped via `to-draw-y`. Text positioning accounts for draw's top-left anchoring (vs PostScript baseline).
+
+The viewer uses a `panel` face to clip the image during Fit Width scrolling — the image face extends beyond the panel, and `img-f/offset` controls the visible portion. A single scaled image is cached per page+width; scrolling only changes the offset (no new `draw` calls).
