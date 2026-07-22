@@ -62,6 +62,8 @@ The built-in viewer (`show-viewer`) provides:
 |--------|---------------|----------------|
 | Mouse wheel up/down | Previous/next page | Scroll up/down |
 | Arrow left/right | Previous/next page | Previous/next page |
+| Ctrl+Arrow left | First page | First page |
+| Ctrl+Arrow right | Last page | Last page |
 | Arrow up/down | — | Scroll up/down |
 | `<<` button | First page | First page |
 | `<` button | Previous page | Previous page |

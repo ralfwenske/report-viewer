@@ -1414,6 +1414,8 @@ context [
             size 800x600
             on-key [
                 case [
+                    all [event/ctrl? event/key = 'left]  [current-page: 1 show-page]
+                    all [event/ctrl? event/key = 'right] [current-page: length? rendered show-page]
                     event/key = 'left  [if current-page > 1 [current-page: current-page - 1 show-page]]
                     event/key = 'right [if current-page < length? rendered [current-page: current-page + 1 show-page]]
                     all [fit-width? event/key = 'up] [
