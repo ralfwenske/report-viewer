@@ -26,8 +26,8 @@ context [
     header-gray: 0.85
     alt-row-gray: 0.95
     default-col-width: 12
-    font-serif: either system/platform = 'Windows ["Times New Roman"]["serif"]
-    font-mono: either system/platform = 'Windows ["Courier New"]["monospace"]
+    font-serif: font-serif
+    font-mono: font-fixed
 
     paper-sizes: [
         a4     [595  842]
