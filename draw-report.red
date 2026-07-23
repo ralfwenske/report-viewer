@@ -26,6 +26,8 @@ context [
     header-gray: 0.85
     alt-row-gray: 0.95
     default-col-width: 12
+    font-serif: either system/platform = 'Windows ["Times New Roman"]["serif"]
+    font-mono: either system/platform = 'Windows ["Courier New"]["monospace"]
 
     paper-sizes: [
         a4     [595  842]
@@ -625,7 +627,7 @@ context [
         i?: style-has styles 'i
         hd: style-heading styles
         if all [hd > 0 not b? not (style-has styles 'm) not i?][b?: true]
-        name: either style-has styles 'm ["monospace"]["serif"]
+        name: either style-has styles 'm [font-mono][font-serif]
         spec: copy [name: "" size: 0]
         spec/2: name
         spec/4: to integer! sz * font-scale
