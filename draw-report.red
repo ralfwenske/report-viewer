@@ -21,6 +21,7 @@ context [
     line-height: 18
     row-padding: 4
     cell-pad: 3
+    platform-offset: either system/platform = 'Linux [0][4]
     underline-offset: 2
     stroke-width: 0.5
     header-gray: 0.85
@@ -761,8 +762,8 @@ context [
             if bg [
                 append page-draw compose [
                     fill-pen (bg) pen off
-                    box (as-pair join-x ((to-draw-y join-y) - rsz - 2))
-                        (as-pair (join-x + tw) ((to-draw-y join-y) + 4))
+                    box (as-pair join-x ((to-draw-y join-y) - rsz - 2 + platform-offset))
+                        (as-pair (join-x + tw) ((to-draw-y join-y) + 4 + platform-offset))
                 ]
             ]
 
@@ -770,7 +771,7 @@ context [
 
             append page-draw compose [
                 pen (fg) font (current-font)
-                text (as-pair join-x ((to-draw-y join-y) - rsz)) (text)
+                text (as-pair join-x ((to-draw-y join-y) - rsz + platform-offset)) (text)
             ]
 
             join-x: join-x + tw
@@ -778,8 +779,8 @@ context [
             if all [any-style? style-has styles 'u][
                 append page-draw compose [
                     pen (fg)
-                    line (as-pair ul-x ((to-draw-y join-y) + 2))
-                         (as-pair (ul-x + tw) ((to-draw-y join-y) + 2))
+                    line (as-pair ul-x ((to-draw-y join-y) + 2 + platform-offset))
+                         (as-pair (ul-x + tw) ((to-draw-y join-y) + 2 + platform-offset))
                 ]
             ]
         ][
@@ -792,8 +793,8 @@ context [
             if bg [
                 append page-draw compose [
                     fill-pen (bg) pen off
-                    box (as-pair x ((to-draw-y y) - rsz - 2))
-                        (as-pair (x + tw) ((to-draw-y y) + 4))
+                    box (as-pair x ((to-draw-y y) - rsz - 2 + platform-offset))
+                        (as-pair (x + tw) ((to-draw-y y) + 4 + platform-offset))
                 ]
             ]
 
@@ -804,15 +805,15 @@ context [
             ]
             append page-draw compose [
                 pen (fg) font (current-font)
-                text (as-pair dx ((to-draw-y y) - rsz)) (text)
+                text (as-pair dx ((to-draw-y y) - rsz + platform-offset)) (text)
             ]
 
             if all [any-style? style-has styles 'u][
                 ul-x: dx
                 append page-draw compose [
                     pen (fg)
-                    line (as-pair ul-x ((to-draw-y y) + 2))
-                         (as-pair (ul-x + tw) ((to-draw-y y) + 2))
+                    line (as-pair ul-x ((to-draw-y y) + 2 + platform-offset))
+                         (as-pair (ul-x + tw) ((to-draw-y y) + 2 + platform-offset))
                 ]
             ]
 
