@@ -21,7 +21,6 @@ context [
     line-height: 18
     row-padding: 4
     cell-pad: 3
-    platform-offset: either system/platform = 'Linux [0][4]
     underline-offset: 2
     stroke-width: 0.5
     header-gray: 0.85
@@ -626,7 +625,7 @@ context [
         i?: style-has styles 'i
         hd: style-heading styles
         if all [hd > 0 not b? not (style-has styles 'm) not i?][b?: true]
-        name: either style-has styles 'm ["Courier"]["Times"]
+        name: either style-has styles 'm ["monospace"]["serif"]
         spec: copy [name: "" size: 0]
         spec/2: name
         spec/4: to integer! sz * font-scale
@@ -653,6 +652,14 @@ context [
     ][
         sz: size-text/with measure-face text
         to integer! sz/x
+    ]
+
+    measure-height: func [
+        "Measure pixel height of current font"
+        /local sz
+    ][
+        sz: size-text/with measure-face "Hg"
+        to integer! sz/y
     ]
 
     to-draw-y: func [
@@ -736,7 +743,7 @@ context [
         x [integer!] y [integer!] text [string!]
         col-w-arg [integer!] align [string!] styles [block!]
         /join "Continue from join-x/join-y position"
-        /local any-style? pad-w bg fg sz rsz tw dx ul-x
+        /local any-style? pad-w bg fg sz fh tw dx ul-x
     ][
         if (length? text) = 0 [exit]
 
@@ -750,20 +757,21 @@ context [
         bg: style-bg-color styles
         fg: any [style-fg-color styles 0.0.0]
         sz: heading-size style-heading styles
-        rsz: to integer! sz * font-scale
+
+        either any-style? [set-font styles sz][set-font [] font-size]
+        fh: measure-height
+        tw: measure-text text
 
         either join [
             pad-w: style-width styles
             if pad-w > 0 [text: pad-text copy text pad-w align]
-            either any-style? [set-font styles sz][set-font [] font-size]
-
             tw: measure-text text
 
             if bg [
                 append page-draw compose [
                     fill-pen (bg) pen off
-                    box (as-pair join-x ((to-draw-y join-y) - rsz - 2 + platform-offset))
-                        (as-pair (join-x + tw) ((to-draw-y join-y) + 4 + platform-offset))
+                    box (as-pair join-x ((to-draw-y join-y) - fh - 2))
+                        (as-pair (join-x + tw) ((to-draw-y join-y) + 4))
                 ]
             ]
 
@@ -771,7 +779,7 @@ context [
 
             append page-draw compose [
                 pen (fg) font (current-font)
-                text (as-pair join-x ((to-draw-y join-y) - rsz + platform-offset)) (text)
+                text (as-pair join-x ((to-draw-y join-y) - fh)) (text)
             ]
 
             join-x: join-x + tw
@@ -779,22 +787,20 @@ context [
             if all [any-style? style-has styles 'u][
                 append page-draw compose [
                     pen (fg)
-                    line (as-pair ul-x ((to-draw-y join-y) + 2 + platform-offset))
-                         (as-pair (ul-x + tw) ((to-draw-y join-y) + 2 + platform-offset))
+                    line (as-pair ul-x ((to-draw-y join-y) + 2))
+                         (as-pair (ul-x + tw) ((to-draw-y join-y) + 2))
                 ]
             ]
         ][
             pad-w: style-width styles
             if pad-w > 0 [text: pad-text copy text pad-w align]
-            either any-style? [set-font styles sz][set-font [] font-size]
-
             tw: measure-text text
 
             if bg [
                 append page-draw compose [
                     fill-pen (bg) pen off
-                    box (as-pair x ((to-draw-y y) - rsz - 2 + platform-offset))
-                        (as-pair (x + tw) ((to-draw-y y) + 4 + platform-offset))
+                    box (as-pair x ((to-draw-y y) - fh - 2))
+                        (as-pair (x + tw) ((to-draw-y y) + 4))
                 ]
             ]
 
@@ -805,15 +811,15 @@ context [
             ]
             append page-draw compose [
                 pen (fg) font (current-font)
-                text (as-pair dx ((to-draw-y y) - rsz + platform-offset)) (text)
+                text (as-pair dx ((to-draw-y y) - fh)) (text)
             ]
 
             if all [any-style? style-has styles 'u][
                 ul-x: dx
                 append page-draw compose [
                     pen (fg)
-                    line (as-pair ul-x ((to-draw-y y) + 2 + platform-offset))
-                         (as-pair (ul-x + tw) ((to-draw-y y) + 2 + platform-offset))
+                    line (as-pair ul-x ((to-draw-y y) + 2))
+                         (as-pair (ul-x + tw) ((to-draw-y y) + 2))
                 ]
             ]
 
