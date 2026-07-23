@@ -48,6 +48,16 @@ Same content DSL as `report-generator`:
 
 All styles work everywhere. See the [report-generator README](../report-generator/README.md) for the complete styles reference.
 
+### Font styles (draw-report specific)
+
+| Style | Font | Notes |
+|-------|------|-------|
+| (default) | serif | Platform-specific: "Times New Roman" (Windows), "serif" (Linux/Mac) |
+| `'s` | sans-serif | e.g. " and sans-serif" `['s]` |
+| `'m` | monospace | Platform-specific: "Courier New" (Windows), "monospace" (Linux/Mac) |
+
+Fonts are set via Red's built-in `font-serif`, `font-sans-serif`, and `font-fixed` variables for platform independence.
+
 ## Viewer features
 
 The built-in viewer (`show-viewer`) provides:

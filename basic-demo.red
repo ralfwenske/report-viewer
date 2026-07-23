@@ -22,6 +22,7 @@ append rpt reduce [
     []
     'CONTENT
     ["This is a draw-based report viewer:" ['h2 yellow black]]
+    [['h2] "Default font is serif" " and sans-serif" ['s] " mono" ['m]]
     ['COLUMN 33 3
         ["Generated on " ['i] "%DATE%"]
         ["Generated on " ['i] now [14 'date '>]]

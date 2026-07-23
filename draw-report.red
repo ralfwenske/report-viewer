@@ -26,8 +26,6 @@ context [
     header-gray: 0.85
     alt-row-gray: 0.95
     default-col-width: 12
-    font-serif: font-serif
-    font-mono: font-fixed
 
     paper-sizes: [
         a4     [595  842]
@@ -617,6 +615,7 @@ context [
     font-cache: make map! []
     join-x: 0
     join-y: 0
+    line-fh: 0
 
     make-font: func [
         "Create font! for style combo and size"
@@ -627,7 +626,11 @@ context [
         i?: style-has styles 'i
         hd: style-heading styles
         if all [hd > 0 not b? not (style-has styles 'm) not i?][b?: true]
-        name: either style-has styles 'm [font-mono][font-serif]
+        name: font-serif
+        case [
+            style-has styles 'm [name: font-fixed]
+            style-has styles 's [name: font-sans-serif]
+        ]
         spec: copy [name: "" size: 0]
         spec/2: name
         spec/4: to integer! sz * font-scale
@@ -772,7 +775,7 @@ context [
             if bg [
                 append page-draw compose [
                     fill-pen (bg) pen off
-                    box (as-pair join-x ((to-draw-y join-y) - fh - 2))
+                    box (as-pair join-x ((to-draw-y join-y) - line-fh - 2))
                         (as-pair (join-x + tw) ((to-draw-y join-y) + 4))
                 ]
             ]
@@ -781,7 +784,7 @@ context [
 
             append page-draw compose [
                 pen (fg) font (current-font)
-                text (as-pair join-x ((to-draw-y join-y) - fh)) (text)
+                text (as-pair join-x ((to-draw-y join-y) - line-fh)) (text)
             ]
 
             join-x: join-x + tw
@@ -849,6 +852,8 @@ context [
             ][
                 join-x: margin-left
                 join-y: page-y
+                set-font [] font-size
+                line-fh: measure-height
                 i: 1
                 while [i <= length? segments][
                     styles: merge-styles line-styles pick segments i
