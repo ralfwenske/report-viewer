@@ -615,7 +615,6 @@ context [
     font-cache: make map! []
     join-x: 0
     join-y: 0
-    line-fh: 0
 
     make-font: func [
         "Create font! for style combo and size"
@@ -775,7 +774,7 @@ context [
             if bg [
                 append page-draw compose [
                     fill-pen (bg) pen off
-                    box (as-pair join-x ((to-draw-y join-y) - line-fh - 2))
+                    box (as-pair join-x ((to-draw-y join-y) - fh - 2))
                         (as-pair (join-x + tw) ((to-draw-y join-y) + 4))
                 ]
             ]
@@ -784,7 +783,7 @@ context [
 
             append page-draw compose [
                 pen (fg) font (current-font)
-                text (as-pair join-x ((to-draw-y join-y) - line-fh)) (text)
+                text (as-pair join-x ((to-draw-y join-y) - fh)) (text)
             ]
 
             join-x: join-x + tw
@@ -852,8 +851,6 @@ context [
             ][
                 join-x: margin-left
                 join-y: page-y
-                set-font [] font-size
-                line-fh: measure-height
                 i: 1
                 while [i <= length? segments][
                     styles: merge-styles line-styles pick segments i
