@@ -26,9 +26,6 @@ viewer-base: context [
     header-gray: 0.85
     alt-row-gray: 0.95
     default-col-width: 12
-    font-serif: "Times"
-    font-fixed: "Courier"
-    font-sans-serif: "Helvetica"
 
     paper-sizes: [
         a4     [595  842]
