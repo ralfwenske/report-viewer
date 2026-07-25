@@ -16,25 +16,87 @@ The module renders report content into `draw` command blocks (one per page). The
 do %draw-report.red
 ```
 
-### Exported functions
+### Exports
+
+Only two globals are exported:
 
 ```red
-generate-report content          ; returns block of draw blocks (one per page)
-render-page page-block zoom      ; render a draw block at zoom % (200 = 2× resolution)
-show-viewer/title rendered "..." ; display rendered pages in viewer window
-paper-format 'a4                 ; set paper size (default: a4)
-paper-format/landscape 'a4       ; set paper size in landscape orientation
-fontsize 14                      ; set font size in points (default: 12)
+report-viewer                   ; default viewer instance
+make-viewer                     ; create a new independent viewer instance
+```
+
+All other functions are methods on a viewer instance:
+
+```red
+report-viewer/paper-format 'a4                  ; set paper size (default: a4)
+report-viewer/paper-format/landscape 'a4        ; landscape orientation
+report-viewer/paper-format 500x800              ; custom size in points (WxH)
+report-viewer/fontsize 14                       ; set font size (default: 12)
+report-viewer/set-hint-delay 3                  ; hint hover delay in seconds (default: 1)
+pages: report-viewer/generate-view content      ; returns block of draw blocks
+rendered: report-viewer/render-page page 200    ; render at zoom %
+report-viewer/show-viewer/title/on-link/on-hint rendered "Title" :link-fn :hint-fn
+```
+
+### Independent viewer instances
+
+Use `make-viewer` to create independent viewer instances for popups or multi-document scenarios. Each instance has its own config (page size, font, margins) that won't interfere with other instances:
+
+```red
+; Main report
+report-viewer/paper-format 'a4
+pages: report-viewer/generate-view main-report
+
+; Popup with different page size — uses its own viewer instance
+popup: make-viewer
+popup/paper-format 480x400
+popup/fontsize 12
+popup-pages: popup/generate-view popup-content
 ```
 
 ### Typical usage
 
 ```red
-pages: generate-report rpt
+pages: report-viewer/generate-view rpt
 rendered: copy []
-foreach p pages [append/only rendered render-page p 200]
-show-viewer/title rendered "My Report"
+foreach p pages [append/only rendered report-viewer/render-page p 200]
+report-viewer/show-viewer/title rendered "My Report"
 ```
+
+### Interactive links and hints
+
+Add clickable links and hover hints using style words `'link-1`, `'link-2`, ... and `'hint-1`, `'hint-2`, ...:
+
+```red
+["Invoice #12345" ['b 'link-1]]         ; clickable link, id=1
+["Details" ['u 'hint-2]]                ; hover hint, id=2
+["Widget A" ['link-3 'hint-3]]          ; both on same value
+```
+
+Links and hints work in tables, content lines, headers, and footers:
+
+```red
+['table ["Name" ['< 30] "Price" ['> 10]]
+    ["Widget" ['link-1] 100]]
+```
+
+Use `/on-link` and/or `/on-hint` refinements to provide handlers:
+
+```red
+report-viewer/show-viewer/title/on-link/on-hint rendered "My Report"
+    func [id [integer!] text [string!]][      ; called on click
+        view [text (rejoin ["Link " id ": " text]) button "OK" [unview]]
+    ]
+    func [id [integer!] text [string!]][      ; called after hover delay
+        print rejoin ["Hint " id ": " text]
+    ]
+```
+
+- `'link-N` — on click, calls the `/on-link` handler with `(id, text)`
+- `'hint-N` — after hovering for `hint-delay` seconds (default 1), calls the `/on-hint` handler with `(id, text)`
+- Both can appear on the same element: `['link-1 'hint-2]`
+- Handlers are independent — provide one, both, or neither
+- In report-generator (PDF output), `'link`/`'hint` styles are silently ignored — the same content DSL works for both viewers
 
 `render-page p 200` renders at 2× resolution (1190×1684 for A4) for sharp text at any zoom. Only one page image is held at a time, so memory stays flat.
 

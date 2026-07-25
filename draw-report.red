@@ -4,12 +4,12 @@ Red [
     Purpose: "Generate multi-page A4 reports using Red's draw dialect — no PostScript, no ps2pdf"
     Author: "Ralf Wenske"
     Helpers: "Kilo and MiMo-V2.5-Pro"
-    Exports: [generate-report render-page paper-format fontsize]
+    Exports: [report-viewer make-viewer]
     Date: 2026-07-20
     Needs: 'View
 ]
 
-context [
+viewer-base: context [
     page-width: 595
     page-height: 842
     margin-left: 50
@@ -26,6 +26,9 @@ context [
     header-gray: 0.85
     alt-row-gray: 0.95
     default-col-width: 12
+    font-serif: "Times"
+    font-fixed: "Courier"
+    font-sans-serif: "Helvetica"
 
     paper-sizes: [
         a4     [595  842]
@@ -37,30 +40,41 @@ context [
 
     landscape?: false
 
-    set 'fontsize func ["Set font size in points" size [integer!]] [
+    fontsize: func ["Set font size in points" size [integer!]] [
         font-size: size
         line-height: font-size + 6
     ]
 
-    set 'paper-format func [
-        "Set paper size by name. Returns none if unknown."
-        name [word!] "One of: a4 letter legal a3 a5"
+    paper-format: func [
+        "Set paper size by name or custom pair (e.g. 595x842). Returns none if unknown name."
+        name-or-size [word! pair!] "Name (a4 letter legal a3 a5) or size in points (WxH)"
         /landscape "Swap width and height for horizontal orientation"
         /local sz
     ][
-        sz: select paper-sizes name
-        either sz [
+        either pair? name-or-size [
             landscape?: landscape
             either landscape [
-                page-width: sz/2
-                page-height: sz/1
+                page-width: name-or-size/y
+                page-height: name-or-size/x
             ][
-                page-width: sz/1
-                page-height: sz/2
+                page-width: name-or-size/x
+                page-height: name-or-size/y
             ]
         ][
-            print rejoin ["Unknown paper format: " name ". Valid: " mold words-of paper-sizes]
-            none
+            sz: select paper-sizes name-or-size
+            either sz [
+                landscape?: landscape
+                either landscape [
+                    page-width: sz/2
+                    page-height: sz/1
+                ][
+                    page-width: sz/1
+                    page-height: sz/2
+                ]
+            ][
+                print rejoin ["Unknown paper format: " name-or-size ". Valid: " mold words-of paper-sizes]
+                none
+            ]
         ]
     ]
 
@@ -616,6 +630,14 @@ context [
     join-x: 0
     join-y: 0
 
+    hotspots: copy []
+    page-hotspots: copy []
+    hint-delay: 1
+
+    set-hint-delay: func ["Set hint hover delay in seconds" secs [integer!]][
+        hint-delay: max 1 secs
+    ]
+
     make-font: func [
         "Create font! for style combo and size"
         styles [block!] sz [integer!]
@@ -747,7 +769,7 @@ context [
         x [integer!] y [integer!] text [string!]
         col-w-arg [integer!] align [string!] styles [block!]
         /join "Continue from join-x/join-y position"
-        /local any-style? pad-w bg fg sz fh tw dx ul-x
+        /local any-style? pad-w bg fg sz fh tw dx ul-x link-id hint-id s-str
     ][
         if (length? text) = 0 [exit]
 
@@ -765,6 +787,25 @@ context [
         either any-style? [set-font styles sz][set-font [] font-size]
         fh: measure-height
         tw: measure-text text
+
+        link-id: none
+        hint-id: none
+        foreach s styles [
+            if word? s [
+                s-str: form s
+                dash: find s-str #"-"
+                if dash [
+                    prefix: copy/part s-str dash
+                    suffix: copy next dash
+                    if (length? suffix) > 0 [
+                        case [
+                            prefix = "link" [link-id: attempt [to integer! suffix]]
+                            prefix = "hint" [hint-id: attempt [to integer! suffix]]
+                        ]
+                    ]
+                ]
+            ]
+        ]
 
         either join [
             pad-w: style-width styles
@@ -784,6 +825,10 @@ context [
             append page-draw compose [
                 pen (fg) font (current-font)
                 text (as-pair join-x ((to-draw-y join-y) - fh)) (text)
+            ]
+
+            if any [link-id hint-id][
+                append/only hotspots reduce [link-id hint-id join-x ((to-draw-y join-y) - fh) tw fh text]
             ]
 
             join-x: join-x + tw
@@ -816,6 +861,10 @@ context [
             append page-draw compose [
                 pen (fg) font (current-font)
                 text (as-pair dx ((to-draw-y y) - fh)) (text)
+            ]
+
+            if any [link-id hint-id][
+                append/only hotspots reduce [link-id hint-id dx ((to-draw-y y) - fh) tw fh text]
             ]
 
             if all [any-style? style-has styles 'u][
@@ -1080,7 +1129,7 @@ context [
     ; Main entry point
     ;=========================================================================
 
-    set 'generate-report func [
+    generate-view: func [
         "Generate a multi-page report using draw dialect. Returns block of image!"
         content [block!] "Content block with 'HEADER 'CONTENT 'FOOTER sections"
         /local sections hdr ctn ftr
@@ -1093,6 +1142,7 @@ context [
             col-col-w col-gap col-rows col-total col-num col-idx col-remaining
             col-rows-per-col col-avail col-cols-fit col-rendered
             col-ci col-ri col-r col-emit-y col-offset col-draw saved-pd
+            hs-before hs-after hs-i hs
             img-file img-obj img-display-w img-display-h max-page-h
             pn total-pages result
     ][
@@ -1110,7 +1160,9 @@ context [
         datetime-str: rejoin [date-str " " time-str]
 
         pages: copy []
-        page-draw: copy []
+        page-draw: compose [fill-pen white pen off box 0x0 (as-pair page-width page-height)]
+        page-hotspots: copy []
+        hotspots: copy []
         page-num: 1
         set-font [] font-size
 
@@ -1119,8 +1171,10 @@ context [
 
         new-page: does [
             append/only pages page-draw
+            append/only page-hotspots hotspots
+            hotspots: copy []
             page-num: page-num + 1
-            page-draw: copy []
+            page-draw: compose [fill-pen white pen off box 0x0 (as-pair page-width page-height)]
             set-font [] font-size
             page-y: usable-top
             page-y: draw-header hdr page-y date-str time-str datetime-str
@@ -1224,7 +1278,7 @@ context [
                                 ]
                             ]
                             col-col-w: measure-column-pixels col-rows
-                            if col-gap < to integer! 1 * font-size * 0.5 [col-gap: to integer! 1 * font-size * 0.5]
+                            if col-gap < to integer! 3 * font-size * 0.5 [col-gap: to integer! 3 * font-size * 0.5]
                         ]
                         col-total: length? col-rows
                         col-num: to integer! (page-width - margin-left - margin-right) / (col-col-w + col-gap)
@@ -1246,6 +1300,7 @@ context [
                                 col-offset: (col-ci - 1) * (col-col-w + col-gap)
                                 col-draw: copy []
                                 saved-pd: page-draw
+                                hs-before: length? hotspots
                                 page-draw: col-draw
                                 repeat col-ri col-rows-per-col [
                                     col-r: col-idx + ((col-ci - 1) * col-rows-per-col) + col-ri - 1
@@ -1253,6 +1308,15 @@ context [
                                         col-emit-y: page-y - ((col-ri - 1) * line-height)
                                         draw-content-line col-rows/:col-r col-emit-y
                                         col-rendered: col-rendered + 1
+                                    ]
+                                ]
+                                if col-offset > 0 [
+                                    hs-after: length? hotspots
+                                    hs-i: hs-before + 1
+                                    while [hs-i <= hs-after][
+                                        hs: pick hotspots hs-i
+                                        hs/3: hs/3 + col-offset
+                                        hs-i: hs-i + 1
                                     ]
                                 ]
                                 page-draw: saved-pd
@@ -1319,6 +1383,7 @@ context [
         ]
 
         append/only pages page-draw
+        append/only page-hotspots hotspots
         total-pages: length? pages
 
         ;--- Token replacement: walk each page's draw block, replace in strings ---
@@ -1342,7 +1407,7 @@ context [
         pages
     ]
 
-    set 'render-page function [
+    render-page: function [
         "Render a page draw block at given zoom percent (100 = native size)"
         page-block [block!] zoom [integer!]
     ][
@@ -1351,13 +1416,15 @@ context [
         draw sz compose/deep [scale (z) (z) (page-block)]
     ]
 
-    set 'get-page-width does [page-width]
-    set 'get-page-height does [page-height]
+    get-page-width: does [page-width]
+    get-page-height: does [page-height]
 
-    set 'show-viewer function [
+    show-viewer: function [
         "Display rendered pages in a viewer window with navigation and zoom"
         rendered [block!] "Block of image! (one per page, from render-page)"
         /title window-title [string!] "Window title"
+        /on-link link-fn [function!] "func [id [integer!] text [string!]] — called on click"
+        /on-hint hint-fn [function!] "func [id [integer!] text [string!]] — called after 1s hover"
     ][
         current-page: 1
         current-img: none
@@ -1366,6 +1433,45 @@ context [
         fit-width?: false
         scroll-y: 0
         toolbar-h: 50
+        link-handler: either on-link [:link-fn][none]
+        hint-handler: either on-hint [:hint-fn][none]
+        hovered-hs: none
+        hint-active: false
+        hint-ticks: 0
+
+        sv-page-width: page-width
+        sv-page-height: page-height
+        sv-page-hotspots: copy page-hotspots
+        forall sv-page-hotspots [
+            change/only sv-page-hotspots either first sv-page-hotspots [copy first sv-page-hotspots][none]
+        ]
+        sv-page-hotspots: head sv-page-hotspots
+
+        screen-to-page: func [sx [number!] sy [number!] /local pw ph][
+            unless img-f/size [return none]
+            pw: img-f/size/x
+            ph: img-f/size/y
+            if any [pw <= 0 ph <= 0][return none]
+            as-pair
+                to integer! sx * sv-page-width / pw
+                to integer! sy * sv-page-height / ph
+        ]
+
+        hit-test: func [page-pos [pair!] /local hs hx hy hw hh][
+            unless all [sv-page-hotspots current-page <= length? sv-page-hotspots][return none]
+            hs: pick sv-page-hotspots current-page
+            unless hs [return none]
+            foreach hotspot hs [
+                hx: hotspot/3  hy: hotspot/4  hw: hotspot/5  hh: hotspot/6
+                if all [
+                    page-pos/x >= hx  page-pos/x <= (hx + hw)
+                    page-pos/y >= hy  page-pos/y <= (hy + hh)
+                ][
+                    return hotspot
+                ]
+            ]
+            none
+        ]
 
         scale-view: does [
             unless current-img [exit]
@@ -1414,6 +1520,8 @@ context [
                 current-img: pick rendered current-page
                 scaled-img: none
                 scroll-y: 0
+                hovered-hs: none
+                hint-active: false
                 page-label/text: rejoin ["Page " current-page " / " length? rendered]
                 update-buttons
                 scale-view
@@ -1457,6 +1565,49 @@ context [
 
             clip-f: panel white 600x800 [
                 img-f: image white
+                    all-over
+                    rate 1
+                    on-over [
+                        page-pos: screen-to-page event/offset/x event/offset/y
+                        new-hs: either page-pos [hit-test page-pos][none]
+                        either new-hs [
+                            either all [hovered-hs new-hs/2 = hovered-hs/2][
+                            ][
+                                hovered-hs: new-hs
+                                hint-active: false
+                                hint-ticks: 0
+                            ]
+                        ][
+                            if hovered-hs [
+                                hovered-hs: none
+                                hint-active: false
+                                hint-ticks: 0
+                            ]
+                        ]
+                    ]
+                    on-time [
+                        if all [hovered-hs hovered-hs/2 not hint-active][
+                            hint-ticks: hint-ticks + 1
+                            if hint-ticks >= hint-delay [
+                                hint-active: true
+                                if :hint-handler [
+                                    hint-handler hovered-hs/2 hovered-hs/7
+                                ]
+                                hovered-hs: none
+                                hint-active: false
+                                hint-ticks: 0
+                            ]
+                        ]
+                    ]
+                    on-down [
+                        if :link-handler [
+                            page-pos: screen-to-page event/offset/x event/offset/y
+                            hs: hit-test page-pos
+                            if all [hs hs/1][
+                                link-handler hs/1 hs/7
+                            ]
+                        ]
+                    ]
             ]
                 on-wheel [
                     delta: either event/picked [event/picked][0]
@@ -1475,10 +1626,13 @@ context [
                     face/size: as-pair (face/parent/size/x - 18) (face/parent/size/y - toolbar-h - 20)
                     scale-view
                 ]
-                do [show-page]
         ] ['resize]
 
+        show-page
         view win 
     ] ; show-viewer
 
-];context
+] ; viewer-base
+
+set 'make-viewer does [make viewer-base []]
+set 'report-viewer make viewer-base []

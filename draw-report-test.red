@@ -38,6 +38,7 @@ pdf-report: function [] [
         'CONTENT
         ["Sales Summary for " ['b] "Q1 2015" ['u]]
         ["Q1 sales data for all product lines. " ['u] zero ['b]]
+        ["Click " ['link-1] "for details" ['hint-1]]
         ["a bold monofont here" ['m 'b]]
         ["                   *" ['m 'u]]
         [""]
@@ -73,13 +74,45 @@ pdf-report: function [] [
     ]
     append/only rpt f-cols
     append rpt [""]
-    append rpt ["(1) first paren"]
-    append rpt ["2) second paren"]
+    append rpt ["(1) test first paren"]
+    append rpt ["2) test second paren"]
     append rpt ["We start a new page (if needed)"]
     append rpt [{(each 'RED' word columns tests min 10 lines for page breaks)}]
-    append rpt what-columns
+    append rpt what-columns ['b 'hint-1]
     append rpt std-footer ""
     rpt
+]
+
+hint: function [id [number!] txt [string!] /link] [
+    type: either /link ["Link "] ["Hint "]
+    hint-size: 680x600
+    tx: (rejoin [type id ": " txt])
+    help-text: split fetch-help (to word! txt) newline
+    rpt: copy []
+    foreach h help-text [
+        either find h #":" [
+            append/only rpt reduce [h [ red]]
+        ][
+            append/only rpt reduce [h ['b blue]]
+        ]
+    ]
+    popup: make-viewer
+    popup/paper-format hint-size
+    popup/fontsize 16
+    popup/margin-left: 10
+    rendered: popup/generate-view rpt
+    view/options/flags [
+        title tx
+        panel [
+            box draw rendered react [face/size: face/parent/size - 20x20]
+        ] react [face/size: face/parent/size - 20x30]
+        return
+        button "OK" focus [unview] react [face/offset: face/parent/size - 80x30]
+    ][size: hint-size + 50x80][modal resize]
+]
+
+link: function [id [number!] text [string!]] [
+    hint/link id text
 ]
 
 ;--- Orientation popup ---
@@ -91,13 +124,18 @@ view/options layout [
     across
     button "Portrait"  [is-landscape: false unview]
     button "Landscape" [is-landscape: true unview]
-][size: 280x100]
+][size: 280x80]
 
-either is-landscape [paper-format/landscape 'a4][paper-format 'a4]
 
 ;--- Generate and render all pages at native size ---
-pages: generate-report pdf-report
+either is-landscape [report-viewer/paper-format/landscape 'a4][report-viewer/paper-format 'a4]
+pages: report-viewer/generate-view pdf-report
 rendered: copy []
-foreach p pages [append/only rendered render-page p 200]
+foreach p pages [append/only rendered report-viewer/render-page p 200]
+report-viewer/set-hint-delay 2
+report-viewer/show-viewer/title/on-link/on-hint 
+    rendered 
+    "Basic Demo" 
+    :link
+    :hint
 
-show-viewer/title rendered "Draw Report Viewer Test"

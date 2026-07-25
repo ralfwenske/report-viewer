@@ -46,7 +46,7 @@ context [
         result
     ] ; filter
 
-    set 'what-columns function [] [
+    set 'what-columns function [style [block!]] [
         result: copy []
         foreach kind kinds [
             title: copy rejoin ["Red - " kind]
@@ -61,7 +61,7 @@ context [
             kind-column: copy ['COLUMN * 0]
             f: copy filter kind
             repeat ix (length? f) [
-                append/only kind-column reduce [f/(ix)]
+                append/only kind-column reduce [f/(ix) style]
             ]
             append/only result kind-column
         ]
