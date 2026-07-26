@@ -21,7 +21,7 @@ append rpt reduce [
     ["Page %PAGE% of %PAGES%" "" "%TIME%"]
     []
     'CONTENT
-    ["This is a draw-based report viewer:" ['h2 yellow black]]
+    ["  This is a draw-based report viewer:  " ['h2 gray yellow black]]
     [['h2 'u] "Serif (default) " "sans-serif " ['s] "['s] " ['s blue] "mono " ['m] "['m]" ['m blue]]
     ['COLUMN 33 3
         ["Generated on " ['i] "%DATE%"]
@@ -45,9 +45,10 @@ append rpt reduce [
     ]
     ["and here another columns demo" ['u 'h2]]
     get-items ['COLUMN]
+    [['b] "  Confidential  " ['h3 blue yellow blue]]
     'FOOTER
     []
-    [['b] " Confidential " ['h3 white blue] "%DATE%" "Page %PAGE% of %PAGES%"]
+    [['b] "  Confidential  " ['h3 blue yellow blue] "%DATE%" "Page %PAGE% of %PAGES%"]
 ]
 
 hint: function [id [number!] text [string!] /link] [

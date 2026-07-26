@@ -165,6 +165,9 @@ Buttons are disabled when at the first or last page.
 | Content DSL | Identical | Identical |
 | Font metrics | PostScript `stringwidth` | `size-text/with` |
 | Coordinates | PostScript (Y up from bottom) | Draw (Y down from top) |
+| Interactive links | No (`'link-N` ignored) | Click handler via `/on-link` |
+| Hover hints | No (`'hint-N` ignored) | Hover handler via `/on-hint` (configurable delay) |
+| Frame color | Yes (3rd tuple) | Yes (3rd tuple) |
 
 ## Architecture
 

@@ -19,7 +19,7 @@ std-footer: function [extra [string!]] [
     result: [
         'FOOTER
         []
-        [['b] "Confidential" "%DATE%" "Page %PAGE% of %PAGES%"]
+        [['b] "  Confidential  " [blue white blue] "%DATE%" "Page %PAGE% of %PAGES%"]
     ]
     if extra <> "" [
         append/only result reduce [extra ['i]]

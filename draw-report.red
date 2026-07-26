@@ -101,6 +101,21 @@ viewer-base: context [
         none
     ]
 
+    style-frame-color: func [
+        "Extract third tuple from styles as frame color, or none"
+        styles [block!]
+        /local s count
+    ][
+        count: 0
+        foreach s styles [
+            if tuple? s [
+                count: count + 1
+                if count = 3 [return s]
+            ]
+        ]
+        none
+    ]
+
     resolve-colors: func [
         "Resolve color words (e.g. red) to tuples in a style block"
         styles [block!]
@@ -199,7 +214,7 @@ viewer-base: context [
     ][
         either empty? override [copy base][
             result: copy base
-            foreach s override [unless find result s [append result s]]
+            foreach s override [unless all [not tuple? s find result s] [append result s]]
             result
         ]
     ]
@@ -766,7 +781,7 @@ viewer-base: context [
         x [integer!] y [integer!] text [string!]
         col-w-arg [integer!] align [string!] styles [block!]
         /join "Continue from join-x/join-y position"
-        /local any-style? pad-w bg fg sz fh tw dx ul-x link-id hint-id s-str
+        /local any-style? pad-w bg fg fc sz fh tw dx ul-x link-id hint-id s-str
     ][
         if (length? text) = 0 [exit]
 
@@ -779,6 +794,7 @@ viewer-base: context [
         ]
         bg: style-bg-color styles
         fg: any [style-fg-color styles 0.0.0]
+        fc: style-frame-color styles
         sz: heading-size style-heading styles
 
         either any-style? [set-font styles sz][set-font [] font-size]
@@ -809,11 +825,26 @@ viewer-base: context [
             if pad-w > 0 [text: pad-text copy text pad-w align]
             tw: measure-text text
 
-            if bg [
+            if fc [
                 append page-draw compose [
-                    fill-pen (bg) pen off
+                    fill-pen (fc) pen off
                     box (as-pair join-x ((to-draw-y join-y) - fh - 2))
                         (as-pair (join-x + tw) ((to-draw-y join-y) + 4))
+                ]
+            ]
+            if bg [
+                either fc [
+                    append page-draw compose [
+                        fill-pen (bg) pen off
+                        box (as-pair (join-x + 2) ((to-draw-y join-y) - fh))
+                            (as-pair (join-x + tw - 2) ((to-draw-y join-y) + 2))
+                    ]
+                ][
+                    append page-draw compose [
+                        fill-pen (bg) pen off
+                        box (as-pair join-x ((to-draw-y join-y) - fh - 2))
+                            (as-pair (join-x + tw) ((to-draw-y join-y) + 4))
+                    ]
                 ]
             ]
 
@@ -842,11 +873,26 @@ viewer-base: context [
             if pad-w > 0 [text: pad-text copy text pad-w align]
             tw: measure-text text
 
-            if bg [
+            if fc [
                 append page-draw compose [
-                    fill-pen (bg) pen off
+                    fill-pen (fc) pen off
                     box (as-pair x ((to-draw-y y) - fh - 2))
                         (as-pair (x + tw) ((to-draw-y y) + 4))
+                ]
+            ]
+            if bg [
+                either fc [
+                    append page-draw compose [
+                        fill-pen (bg) pen off
+                        box (as-pair (x + 2) ((to-draw-y y) - fh))
+                            (as-pair (x + tw - 2) ((to-draw-y y) + 2))
+                    ]
+                ][
+                    append page-draw compose [
+                        fill-pen (bg) pen off
+                        box (as-pair x ((to-draw-y y) - fh - 2))
+                            (as-pair (x + tw) ((to-draw-y y) + 4))
+                    ]
                 ]
             ]
 
