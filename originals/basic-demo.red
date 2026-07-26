@@ -1,65 +1,39 @@
-Red [
-    File:    %basic-demo.red
-    Title:   "Basic Demo"
-    Purpose: "Minimal demo showing draw-report-viewer features"
-    Tabs:    4
-    Needs:   'View
-]
-
-;=== Load draw-report viewer ===
+Red [needs: 'view]
 
 do %draw-report.red
 
-;=== Data definitions ===
-
-title:         "Basic Demo"
-total:         5123.87654
+;--- Report content ---
+title: "Basic Demo"
+total: 5123.87654
 threethousand: 3000
-fourthousand:  4000
+fourthousand: 4000
 widget-C: [[red] "Widget C" [12 green '>] -45 [6.2 '>] total [red 10.3] " Check" [white 255.165.0]]
 
-get-items: func [
-    "Generate 30 sample items into a result block"
-    res [block!] "Result block to append to"
-][
+get-items: func [res [block!]] [
     repeat i 30 [append/only res reduce ["Item " i]]
     res
 ]
 
-;=== Build report ===
-
 rpt: copy []
 append rpt reduce [
-    ;--- Header (shown on every page) ---
     'HEADER
     reduce [['b] "ACME Corp" ['h1 red] (title) ['h2] "%DATE%"]
     ["Page %PAGE% of %PAGES%" "" "%TIME%"]
     []
-
-    ;--- Content ---
     'CONTENT
     ["  This is a draw-based report viewer:  " ['h2 gray yellow black]]
-
-    ;-- Font style demos: serif (default), sans-serif ['s], mono ['m] --
     [['h2 'u] "Serif (default) " "sans-serif " ['s] "['s] " ['s blue] "mono " ['m] "['m]" ['m blue]]
-
-    ;-- Column layout demo: 33 chars wide, 3 chars gap --
     ['COLUMN 33 3
         ["Generated on " ['i] "%DATE%"]
         ["Generated on " ['i] now [14 'date '>]]
         [['m] "Generated on " ['i] "%DATE%"]
         [['m] "Generated on " ['i] now [14 'date '>]]
     ]
-
     [['m] " Sample content goes here. " [white purple] " And yellow here " [black yellow]]
-
-    ;-- Link and hint demos --
     ["Details 1" ['u 'hint-1] " — hover for info"]
     ["Details 2" ['u 'hint-2] " — hover for info"]
     ["First Link" ['u 'link-1] " — click link"]
     ["Second Link" ['u 'link-2] " — click link"]
-
-    ;-- Table with box border and alternating rows --
     ["Table with 'box 'alt" ['u 'h2]]
     ['TABLE 'BOX 'ALT
         ["Product" ['< 30] "Qty" ['^ 10 10.4] "Total" ['> 13 'money] "Status" ['^ 13]]
@@ -69,34 +43,22 @@ append rpt reduce [
         widget-C
         ["TOTALS" ['b] "" "$13'780.00" ""]
     ]
-
     ["and here another columns demo" ['u 'h2]]
     get-items ['COLUMN]
-
-    ;-- Confidential notice --
     [['b] "  Confidential  " ['h3 blue yellow blue]]
-
-    ;--- Footer (shown on every page) ---
     'FOOTER
     []
     [['b] "  Confidential  " ['h3 blue yellow blue] "%DATE%" "Page %PAGE% of %PAGES%"]
 ]
 
-;=== Hint/link popup builder ===
-
-hint: function [
-    "Show a popup with hint or link content"
-    id   [number!] "Hint/link identifier"
-    text [string!]  "Hint/link text"
-    /link "Show as link instead of hint"
-][
+hint: function [id [number!] text [string!] /link] [
     type: either link ["link "] ["hint "]
     hint-size: 480x200
     popup-title: (rejoin [type id ": " text])
     rpt: copy []
     append/only rpt [text ['h1 green]]
     if id = 2 [
-        append/only rpt [[h3 'u red] "This is marked as " type "-2"]
+        append/only rpt [ [h3 'u red] "This is marked as " type "-2"]
     ]
     popup: make-viewer
     popup/paper-format hint-size
@@ -104,22 +66,17 @@ hint: function [
     rendered: popup/generate-view rpt
     view/options/flags [
         title popup-title
-        box hint-size draw rendered
+        box hint-size draw rendered 
         return
         button "OK" focus [unview] react [face/offset: face/parent/size - 88x30]
-    ][size: hint-size + 20x80][resize]
+    ][size: hint-size + 20x80][ resize]
 ]
 
-link: function [
-    "Delegate to hint with /link refinement"
-    id   [number!] "Link identifier"
-    text [string!]  "Link text"
-][
+link: function [id [number!] text [string!]] [
     hint/link id text
 ]
 
-;=== Orientation popup ===
-
+;--- Orientation popup ---
 is-landscape: false
 view/options layout [
     title "Orientation"
@@ -130,19 +87,16 @@ view/options layout [
     button "Landscape" [is-landscape: true unview]
 ][size: 280x100]
 
-;=== Generate and show report ===
 
-either is-landscape [
-    report-viewer/paper-format/landscape 'a4
-][
-    report-viewer/paper-format 'a4
-]
+;--- Generate and render all pages at native size ---
+either is-landscape [report-viewer/paper-format/landscape 'a4][report-viewer/paper-format 'a4]
 pages: report-viewer/generate-view rpt
 rendered: copy []
 foreach p pages [append/only rendered report-viewer/render-page p 200]
 report-viewer/set-hint-delay 2
-report-viewer/show-viewer/title/on-link/on-hint
-    rendered
-    "Basic Demo"
+report-viewer/show-viewer/title/on-link/on-hint 
+    rendered 
+    "Basic Demo" 
     :link
     :hint
+

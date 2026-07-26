@@ -1,48 +1,31 @@
 Red [
-    File:    %draw-report.red
-    Title:   "Draw Report Renderer v1"
-    Purpose: {Generate multi-page A4 reports using Red's
-              draw dialect — no PostScript, no ps2pdf}
-    Author:  "Ralf Wenske"
+    File: %draw-report.red
+    Title: "Draw Report Renderer v1"
+    Purpose: "Generate multi-page A4 reports using Red's draw dialect — no PostScript, no ps2pdf"
+    Author: "Ralf Wenske"
     Helpers: "Kilo and MiMo-V2.5-Pro"
     Exports: [report-viewer make-viewer]
-    Date:    2026-07-20
-    Needs:   'View
-    Tabs:    4
-    Note:    {Uses Red's draw dialect for rendering and
-              Red/View for the interactive page viewer.
-              Supports tables, columns, images, links,
-              and hover hints.}
+    Date: 2026-07-20
+    Needs: 'View
 ]
 
 viewer-base: context [
-    ;=== Page geometry (A4 default, all values in PostScript points) ===
-
-    page-width:  595
+    page-width: 595
     page-height: 842
-    margin-left:   50
-    margin-right:  50
-    margin-top:    50
+    margin-left: 50
+    margin-right: 50
+    margin-top: 50
     margin-bottom: 50
-
-    ;=== Typography ===
-
-    font-size:     12
-    font-scale:    0.82                      ;-- scale factor for draw fonts vs PS fonts
-    line-height:   18
-    row-padding:    4
-    cell-pad:       3
+    font-size: 12
+    font-scale: 0.82
+    line-height: 18
+    row-padding: 4
+    cell-pad: 3
     underline-offset: 2
-    stroke-width:   0.5
-
-    ;=== Grayscale fills ===
-
-    header-gray:    0.85
-    alt-row-gray:   0.95
-
+    stroke-width: 0.5
+    header-gray: 0.85
+    alt-row-gray: 0.95
     default-col-width: 12
-
-    ;=== Supported paper sizes (width x height in points) ===
 
     paper-sizes: [
         a4     [595  842]
@@ -92,7 +75,7 @@ viewer-base: context [
         ]
     ]
 
-    ;=== Color helpers ===
+    ;--- Color helpers ---
 
     style-fg-color: func [
         "Extract first tuple from styles as font color, or none"
@@ -152,7 +135,7 @@ viewer-base: context [
         result
     ]
 
-    ;=== Style helpers ===
+    ;--- Style helpers ---
 
     style-has: func ["Check if style block contains target word" styles [block!] target [word!]][
         not none? find styles target
@@ -261,7 +244,7 @@ viewer-base: context [
         text
     ]
 
-    ;=== Number formatting ===
+    ;--- Number formatting ---
 
     format-number-value: function ["Format number with optional money/decimal/1000 format" val [number!] fmt [none! word! float!]][
         case [
@@ -353,7 +336,7 @@ viewer-base: context [
         ]
     ]
 
-    ;=== DSL parsing ===
+    ;--- Parsing ---
 
     parse-columns: function [
         "Parse column header row: data followed by style block"
@@ -504,7 +487,7 @@ viewer-base: context [
         reduce [line-styles parse-row-segments rest]
     ]
 
-    ;=== Table helpers ===
+    ;--- Table helpers ---
 
     table-modifiers: function [
         "Scan table block for modifiers. Returns [boxed? alt? col-index]"
@@ -541,7 +524,7 @@ viewer-base: context [
         text
     ]
 
-    ;=== Layout math ===
+    ;--- Layout math ---
 
     col-w: does [page-width - margin-left - margin-right]
 
@@ -605,7 +588,7 @@ viewer-base: context [
         to integer! mx
     ]
 
-    ;=== Section parser ===
+    ;--- Section parser ---
 
     parse-sections: function [
         "Parse flat content into [header content footer]."
@@ -649,7 +632,7 @@ viewer-base: context [
     ]
 
     ;=========================================================================
-    ;=== Draw-specific: font management, measurement, and emit functions ===
+    ; Draw-specific: font management, measurement, and emit functions
     ;=========================================================================
 
     page-draw: none
@@ -663,10 +646,7 @@ viewer-base: context [
     page-hotspots: copy []
     hint-delay: 1
 
-    set-hint-delay: func [
-        "Set hint hover delay in seconds"
-        secs [integer!] "Delay in seconds (minimum 1)"
-    ][
+    set-hint-delay: func ["Set hint hover delay in seconds" secs [integer!]][
         hint-delay: max 1 secs
     ]
 
@@ -734,7 +714,7 @@ viewer-base: context [
         to tuple! reduce [to integer! g * 255 to integer! g * 255 to integer! g * 255]
     ]
 
-    ;=== Draw emit primitives ===
+    ;--- Draw emit primitives ---
 
     draw-rect: func [
         "Append rectangle stroke to page-draw"
@@ -794,7 +774,7 @@ viewer-base: context [
         true
     ]
 
-    ;=== Draw styled text (the big one) ===
+    ;--- Draw styled text (the big one) ---
 
     draw-styled-text: func [
         "Render text with style-aware font, alignment, colors, underline"
@@ -943,7 +923,7 @@ viewer-base: context [
         ]
     ]
 
-    ;=== Content/header/footer line renderers ===
+    ;--- Content/header/footer line renderers ---
 
     draw-content-line: func [
         "Render a content line with parsed styles and segments"
@@ -1046,7 +1026,7 @@ viewer-base: context [
         ]
     ]
 
-    ;=== Table rendering ===
+    ;--- Table rendering ---
 
     header-row-h: does [line-height + row-padding]
 
@@ -1161,7 +1141,7 @@ viewer-base: context [
         ]
     ]
 
-    ;=== Token replacement in draw blocks ===
+    ;--- Token replacement in draw blocks ---
 
     replace-tokens-in-draw: func [
         "Replace tokens in all strings within a draw block"
@@ -1189,7 +1169,7 @@ viewer-base: context [
     ]
 
     ;=========================================================================
-    ;=== Main entry point ===
+    ; Main entry point
     ;=========================================================================
 
     generate-view: func [
@@ -1312,7 +1292,7 @@ viewer-base: context [
                         not empty? item
                         item/1 = 'column
                     ][
-                        ;-- Column layout --
+                        ;--- Column layout ---
                         either all [(length? item) >= 3 number? item/2 number? item/3][
                             col-col-w: to integer! item/2 * font-size * 0.5
                             col-gap: to integer! item/3 * font-size * 0.5
@@ -1400,7 +1380,7 @@ viewer-base: context [
                             integer? item/2
                             any [file? item/3 string? item/3]
                         ][
-                            ;-- Image: ['IMAGE display-width %file] --
+                            ;--- Image: ['IMAGE display-width %file] ---
                             img-file: to file! item/3
                             img-obj: attempt [load img-file]
                             either img-obj [
@@ -1449,7 +1429,7 @@ viewer-base: context [
         append/only page-hotspots hotspots
         total-pages: length? pages
 
-        ;-- Token replacement: walk each page's draw block, replace in strings --
+        ;--- Token replacement: walk each page's draw block, replace in strings ---
         pn: 0
         foreach page pages [
             pn: pn + 1
@@ -1457,7 +1437,7 @@ viewer-base: context [
         ]
 
 
-        ;-- Draw footer on each page (needs %PAGES% which is now known) --
+        ;--- Draw footer on each page (needs %PAGES% which is now known) ---
         pn: 0
         foreach page pages [
             pn: pn + 1
@@ -1466,7 +1446,7 @@ viewer-base: context [
         ]
 
 
-        ;-- Return draw blocks; use render-page to render at any zoom --
+        ;--- Return draw blocks; use render-page to render at any zoom ---
         pages
     ]
 
